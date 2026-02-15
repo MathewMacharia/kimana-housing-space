@@ -230,7 +230,7 @@ const App: React.FC = () => {
           onLogout={handleLogout}
           onUpdateUser={handleAuthenticated}
           isDarkMode={isDarkMode}
-          onToggleTheme={() => setIsDarkMode(!isDarkMode)}
+          onToggleTheme={() => setIsDarkMode(prev => !prev)}
         />
       );
     }
