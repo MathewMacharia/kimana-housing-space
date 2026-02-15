@@ -38,16 +38,16 @@ const App: React.FC = () => {
   }, []);
 
   const filteredListings = listings.filter(l => {
-    const matchesSearch = l.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                          l.locationName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          l.unitType.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesSearch = l.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      l.locationName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      l.unitType.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesType = filterType === 'All' || l.unitType === filterType;
-    
+
     if (l.unitType === UnitType.AIRBNB && l.subscriptionExpiry) {
       const isExpired = new Date(l.subscriptionExpiry) < new Date();
       if (isExpired && currentUser?.role === UserRole.TENANT) return false;
     }
-    
+
     return matchesSearch && matchesType;
   });
 
@@ -72,8 +72,8 @@ const App: React.FC = () => {
 
   const handlePaymentSuccess = async () => {
     if (currentUser && selectedListing) {
-      await FirebaseService.unlockListingForUser(currentUser.phone, selectedListing.id);
-      const updatedUser = await FirebaseService.getUserByPhone(currentUser.phone);
+      await FirebaseService.unlockListingForUser(currentUser.id, selectedListing.id);
+      const updatedUser = await FirebaseService.getUserById(currentUser.id);
       if (updatedUser) setCurrentUser(updatedUser);
       setIsPaymentModalOpen(false);
     }
@@ -124,7 +124,7 @@ const App: React.FC = () => {
             <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest">
               {filterType !== 'All' ? `${filterType}s` : 'Search Results'}
             </h3>
-            <button 
+            <button
               onClick={() => handleViewAllCategory('All')}
               className="text-[10px] font-black text-blue-600 uppercase bg-blue-50 px-3 py-1 rounded-full active:scale-90 transition-transform"
             >
@@ -132,9 +132,9 @@ const App: React.FC = () => {
             </button>
           </div>
           {filteredListings.map(listing => (
-            <ListingCard 
-              key={listing.id} 
-              listing={listing} 
+            <ListingCard
+              key={listing.id}
+              listing={listing}
               onClick={() => setSelectedListing(listing)}
             />
           ))}
@@ -158,7 +158,7 @@ const App: React.FC = () => {
               </h2>
               <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">Premium Business Stalls</p>
             </div>
-            <button 
+            <button
               onClick={() => handleViewAllCategory(UnitType.BUSINESS_HOUSE)}
               className="text-[10px] font-black text-blue-600 uppercase tracking-widest border border-blue-100 px-3 py-1.5 rounded-full bg-blue-50 active:scale-90 transition-all shadow-sm"
             >
@@ -167,10 +167,10 @@ const App: React.FC = () => {
           </div>
           <div className="flex gap-4 overflow-x-auto no-scrollbar snap-x snap-mandatory -mx-4 px-4 pb-2">
             {businessListings.map(l => (
-              <ListingCard 
-                key={l.id} 
-                listing={l} 
-                variant="horizontal" 
+              <ListingCard
+                key={l.id}
+                listing={l}
+                variant="horizontal"
                 onClick={() => setSelectedListing(l)}
               />
             ))}
@@ -186,7 +186,7 @@ const App: React.FC = () => {
               </h2>
               <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">Houses & Airbnb Units</p>
             </div>
-            <button 
+            <button
               onClick={() => handleViewAllCategory('All')}
               className="text-[10px] font-black text-blue-600 uppercase tracking-widest border border-blue-100 px-3 py-1.5 rounded-full bg-blue-50 active:scale-90 transition-all shadow-sm"
             >
@@ -195,14 +195,14 @@ const App: React.FC = () => {
           </div>
           <div className="flex gap-4 overflow-x-auto no-scrollbar snap-x snap-mandatory -mx-4 px-4 pb-2">
             {residentialListings.map(l => (
-              <ListingCard 
-                key={l.id} 
-                listing={l} 
-                variant="horizontal" 
+              <ListingCard
+                key={l.id}
+                listing={l}
+                variant="horizontal"
                 onClick={() => setSelectedListing(l)}
               />
             ))}
-             {residentialListings.length === 0 && <div className="p-10 text-slate-300 text-[10px] font-black uppercase tracking-widest">No listings found</div>}
+            {residentialListings.length === 0 && <div className="p-10 text-slate-300 text-[10px] font-black uppercase tracking-widest">No listings found</div>}
           </div>
         </section>
       </div>
@@ -218,17 +218,17 @@ const App: React.FC = () => {
       return (
         <div className="space-y-6">
           {selectedListing ? (
-            <ListingDetail 
-              listing={selectedListing} 
-              onBack={() => setSelectedListing(null)} 
+            <ListingDetail
+              listing={selectedListing}
+              onBack={() => setSelectedListing(null)}
               onUnlock={() => handleUnlockContact(selectedListing)}
               isUnlocked={currentUser.unlockedListings.includes(selectedListing.id)}
               currentUser={currentUser}
               onAddReview={handleAddReview}
             />
           ) : (
-            <LandlordDashboard 
-              listings={listings} 
+            <LandlordDashboard
+              listings={listings}
               setListings={setListings}
               onUpdateListing={handleUpdateListing}
               landlordId={currentUser.id}
@@ -244,9 +244,9 @@ const App: React.FC = () => {
 
     if (selectedListing) {
       return (
-        <ListingDetail 
-          listing={selectedListing} 
-          onBack={() => setSelectedListing(null)} 
+        <ListingDetail
+          listing={selectedListing}
+          onBack={() => setSelectedListing(null)}
           onUnlock={() => handleUnlockContact(selectedListing)}
           isUnlocked={currentUser.unlockedListings.includes(selectedListing.id)}
           currentUser={currentUser}
@@ -260,9 +260,9 @@ const App: React.FC = () => {
         <div className="space-y-3">
           <div className="relative">
             <i className="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
-            <input 
-              type="text" 
-              placeholder="Search by area or unit type..." 
+            <input
+              type="text"
+              placeholder="Search by area or unit type..."
               className="w-full pl-11 pr-4 py-4 bg-white border border-slate-200 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none shadow-sm"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -276,8 +276,8 @@ const App: React.FC = () => {
     );
   };
 
-  const unlockFee = selectedListing?.unitType === UnitType.AIRBNB ? UNLOCK_FEE_AIRBNB : 
-                  (selectedListing?.unitType === UnitType.BUSINESS_HOUSE ? UNLOCK_FEE_BUSINESS : UNLOCK_FEE_STANDARD);
+  const unlockFee = selectedListing?.unitType === UnitType.AIRBNB ? UNLOCK_FEE_AIRBNB :
+    (selectedListing?.unitType === UnitType.BUSINESS_HOUSE ? UNLOCK_FEE_BUSINESS : UNLOCK_FEE_STANDARD);
 
   return (
     <div className="min-h-screen pb-24 bg-slate-50">
@@ -294,7 +294,7 @@ const App: React.FC = () => {
           </div>
         </div>
         <button onClick={() => setActiveTab('profile')} className="w-9 h-9 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-500">
-           <i className="fas fa-user-circle"></i>
+          <i className="fas fa-user-circle"></i>
         </button>
       </header>
 
@@ -302,7 +302,7 @@ const App: React.FC = () => {
         {renderMainContent()}
       </main>
 
-      <button 
+      <button
         onClick={() => setIsSupportModalOpen(true)}
         className="fixed bottom-28 right-6 w-14 h-14 bg-blue-600 text-white rounded-full shadow-2xl flex items-center justify-center text-xl z-40 active:scale-90 transition-all group"
       >
@@ -311,29 +311,29 @@ const App: React.FC = () => {
       </button>
 
       <nav className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur px-8 py-3 flex justify-around items-center border-t border-slate-100 safe-area-inset-bottom">
-        <button 
-          onClick={() => {setActiveTab('home'); setSelectedListing(null)}}
+        <button
+          onClick={() => { setActiveTab('home'); setSelectedListing(null) }}
           className={`flex flex-col items-center gap-1 transition-colors ${activeTab === 'home' ? 'text-blue-600' : 'text-slate-400'}`}
         >
           <i className="fas fa-home text-lg"></i>
           <span className="text-[9px] font-black uppercase tracking-tighter">Market</span>
         </button>
-        <button 
-          onClick={() => {setActiveTab('search'); setSelectedListing(null)}}
+        <button
+          onClick={() => { setActiveTab('search'); setSelectedListing(null) }}
           className={`flex flex-col items-center gap-1 transition-colors ${activeTab === 'search' ? 'text-blue-600' : 'text-slate-400'}`}
         >
           <i className="fas fa-map-marked-alt text-lg"></i>
           <span className="text-[9px] font-black uppercase tracking-tighter">Explore</span>
         </button>
-        <button 
-          onClick={() => {setActiveTab('listings'); setSelectedListing(null)}}
+        <button
+          onClick={() => { setActiveTab('listings'); setSelectedListing(null) }}
           className={`flex flex-col items-center gap-1 transition-colors ${activeTab === 'listings' ? 'text-blue-600' : 'text-slate-400'}`}
         >
           <i className="fas fa-heart text-lg"></i>
           <span className="text-[9px] font-black uppercase tracking-tighter">Favorites</span>
         </button>
-        <button 
-          onClick={() => {setActiveTab('profile'); setSelectedListing(null)}}
+        <button
+          onClick={() => { setActiveTab('profile'); setSelectedListing(null) }}
           className={`flex flex-col items-center gap-1 transition-colors ${activeTab === 'profile' ? 'text-blue-600' : 'text-slate-400'}`}
         >
           <i className="fas fa-cog text-lg"></i>
@@ -342,8 +342,8 @@ const App: React.FC = () => {
       </nav>
 
       {isPaymentModalOpen && (
-        <PaymentModal 
-          onClose={() => setIsPaymentModalOpen(false)} 
+        <PaymentModal
+          onClose={() => setIsPaymentModalOpen(false)}
           onSuccess={handlePaymentSuccess}
           title="Secure Unlock"
           amount={unlockFee}
@@ -352,8 +352,8 @@ const App: React.FC = () => {
       )}
 
       {isSupportModalOpen && (
-        <ContactSupportModal 
-          onClose={() => setIsSupportModalOpen(false)} 
+        <ContactSupportModal
+          onClose={() => setIsSupportModalOpen(false)}
         />
       )}
     </div>

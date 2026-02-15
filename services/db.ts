@@ -1,14 +1,14 @@
-import { 
-  collection, 
-  doc, 
-  getDoc, 
-  getDocs, 
-  setDoc, 
-  updateDoc, 
-  query, 
-  where, 
+import {
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  setDoc,
+  updateDoc,
+  query,
+  where,
   addDoc,
-  Timestamp 
+  Timestamp
 } from "firebase/firestore";
 import { ref, uploadString, getDownloadURL } from "firebase/storage";
 import { db, storage } from "../firebase";
@@ -18,18 +18,30 @@ export const FirebaseService = {
   // User Profile Management
   async saveUserProfile(user: User): Promise<void> {
     if (!db) throw new Error("Firestore not initialized");
-    const userRef = doc(db, "users", user.phone); 
+    // We use UID as the primary key if available, otherwise fallback to phone
+    const docId = user.id || user.phone;
+    const userRef = doc(db, "users", docId);
     await setDoc(userRef, {
       ...user,
       updatedAt: Timestamp.now()
     }, { merge: true });
   },
 
-  async getUserByPhone(phone: string): Promise<User | null> {
+  async getUserById(id: string): Promise<User | null> {
     if (!db) throw new Error("Firestore not initialized");
-    const userRef = doc(db, "users", phone);
+    const userRef = doc(db, "users", id);
     const userSnap = await getDoc(userRef);
     return userSnap.exists() ? (userSnap.data() as User) : null;
+  },
+
+  async getUserByPhone(phone: string): Promise<User | null> {
+    if (!db) throw new Error("Firestore not initialized");
+    const usersRef = collection(db, "users");
+    const q = query(usersRef, where("phone", "==", phone));
+    const querySnapshot = await getDocs(q);
+    if (querySnapshot.empty) return null;
+    const doc = querySnapshot.docs[0];
+    return { id: doc.id, ...doc.data() } as User;
   },
 
   // Listing Management
@@ -71,9 +83,9 @@ export const FirebaseService = {
   },
 
   // Unlock Transaction logic
-  async unlockListingForUser(phone: string, listingId: string): Promise<void> {
+  async unlockListingForUser(userId: string, listingId: string): Promise<void> {
     if (!db) throw new Error("Firestore not initialized");
-    const userRef = doc(db, "users", phone);
+    const userRef = doc(db, "users", userId);
     const userSnap = await getDoc(userRef);
     if (userSnap.exists()) {
       const userData = userSnap.data() as User;
