@@ -28,7 +28,7 @@ const ListingDetail: React.FC<ListingDetailProps> = ({ listing, onBack, onUnlock
   const isLandlordOfThis = currentUser?.role === UserRole.LANDLORD && listing.landlordId === currentUser.id;
   const canSeeContact = isUnlocked || isLandlordOfThis;
 
-  const averageRating = listing.reviews.length > 0 
+  const averageRating = listing.reviews.length > 0
     ? (listing.reviews.reduce((acc, r) => acc + r.rating, 0) / listing.reviews.length).toFixed(1)
     : "N/A";
 
@@ -36,7 +36,7 @@ const ListingDetail: React.FC<ListingDetailProps> = ({ listing, onBack, onUnlock
     e.preventDefault();
     if (!currentUser || currentUser.role !== UserRole.TENANT) return;
     setIsSubmitting(true);
-    
+
     const review: Review = {
       id: Math.random().toString(36).substr(2, 9),
       userId: currentUser.id,
@@ -58,7 +58,7 @@ const ListingDetail: React.FC<ListingDetailProps> = ({ listing, onBack, onUnlock
   const scrollGallery = (direction: 'left' | 'right') => {
     if (galleryRef.current) {
       const containerWidth = galleryRef.current.clientWidth;
-      const scrollAmount = containerWidth * 0.9 + 12; 
+      const scrollAmount = containerWidth * 0.9 + 12;
       galleryRef.current.scrollBy({
         left: direction === 'right' ? scrollAmount : -scrollAmount,
         behavior: 'smooth'
@@ -67,18 +67,18 @@ const ListingDetail: React.FC<ListingDetailProps> = ({ listing, onBack, onUnlock
   };
 
   return (
-    <div className="animate-in slide-in-from-right duration-500 bg-white min-h-full -mx-4 -mt-4 px-4 pb-12">
-      <div className="sticky top-0 z-50 bg-white/90 backdrop-blur-md -mx-4 px-4 py-4 flex items-center justify-between border-b border-slate-100">
-        <button onClick={onBack} className="w-10 h-10 flex items-center justify-center rounded-full bg-slate-50 text-slate-600 active:scale-90 transition-transform">
+    <div className="animate-in slide-in-from-right duration-500 bg-white dark:bg-slate-950 min-h-full -mx-4 -mt-4 px-4 pb-12">
+      <div className="sticky top-0 z-50 bg-white/90 dark:bg-slate-950/90 backdrop-blur-md -mx-4 px-4 py-4 flex items-center justify-between border-b border-slate-100 dark:border-slate-800">
+        <button onClick={onBack} className="w-10 h-10 flex items-center justify-center rounded-full bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-400 active:scale-90 transition-transform">
           <i className="fas fa-chevron-left"></i>
         </button>
         <div className="text-center">
-          <h2 className="font-bold text-slate-800 text-sm max-w-[150px] truncate">{listing.title}</h2>
+          <h2 className="font-bold text-slate-800 dark:text-slate-100 text-sm max-w-[150px] truncate">{listing.title}</h2>
           <p className="text-[9px] text-green-500 font-bold uppercase tracking-widest flex items-center justify-center gap-1">
             <i className="fas fa-shield-alt text-[7px]"></i> Verified Asset
           </p>
         </div>
-        <button className="w-10 h-10 flex items-center justify-center rounded-full bg-slate-50 text-slate-600 active:scale-90 transition-transform">
+        <button className="w-10 h-10 flex items-center justify-center rounded-full bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-400 active:scale-90 transition-transform">
           <i className="far fa-heart"></i>
         </button>
       </div>
@@ -89,11 +89,11 @@ const ListingDetail: React.FC<ListingDetailProps> = ({ listing, onBack, onUnlock
           <div ref={galleryRef} className="flex gap-3 overflow-x-auto no-scrollbar -mx-4 px-4 snap-x snap-mandatory scroll-smooth">
             {listing.photos.map((photo, i) => (
               <div key={i} className="snap-start relative flex-shrink-0 w-[90vw] h-80 rounded-3xl overflow-hidden bg-slate-100 border border-slate-100 shadow-sm">
-                 <img src={photo} className="absolute inset-0 w-full h-full object-cover blur-2xl opacity-40 scale-125" alt="" />
-                 <img src={photo} className="relative w-full h-full object-contain z-10" alt="" loading="lazy" />
-                 <div className="absolute top-4 left-4 bg-black/40 backdrop-blur px-3 py-1 rounded-full text-white text-[10px] font-black z-20">
-                   PHOTO {i + 1} / {listing.photos.length}
-                 </div>
+                <img src={photo} className="absolute inset-0 w-full h-full object-cover blur-2xl opacity-40 scale-125" alt="" />
+                <img src={photo} className="relative w-full h-full object-contain z-10" alt="" loading="lazy" />
+                <div className="absolute top-4 left-4 bg-black/40 backdrop-blur px-3 py-1 rounded-full text-white text-[10px] font-black z-20">
+                  PHOTO {i + 1} / {listing.photos.length}
+                </div>
               </div>
             ))}
           </div>
@@ -109,57 +109,57 @@ const ListingDetail: React.FC<ListingDetailProps> = ({ listing, onBack, onUnlock
         </div>
 
         {/* Info Card */}
-        <div className="bg-slate-50 rounded-3xl p-6 border border-slate-100 space-y-5 shadow-sm">
+        <div className="bg-slate-50 dark:bg-slate-900 rounded-3xl p-6 border border-slate-100 dark:border-slate-800 space-y-5 shadow-sm">
           <div className="flex justify-between items-start gap-3">
-             <div className="flex-1">
-               <div className="flex items-center gap-2 mb-2">
-                 <span className="bg-blue-600 text-white text-[8px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest">
-                   Listed {new Date(listing.dateListed).toLocaleDateString()}
-                 </span>
-                 {listing.hasParking && <span className="bg-slate-200 text-slate-700 text-[8px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest flex items-center gap-1"><i className="fas fa-car text-[7px]"></i> Parking</span>}
-                 {listing.isPetsFriendly && <span className="bg-orange-100 text-orange-700 text-[8px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest flex items-center gap-1"><i className="fas fa-dog text-[7px]"></i> Pets OK</span>}
-               </div>
-               <h1 className="text-2xl font-black text-slate-900 leading-tight tracking-tight">{listing.title}</h1>
-               <div className="flex items-center gap-2 mt-2">
-                 <p className="text-xs text-slate-500 font-bold"><i className="fas fa-location-dot text-red-500 mr-1"></i> {listing.locationName}</p>
-                 <div className="w-1 h-1 bg-slate-300 rounded-full"></div>
-                 <div className="flex items-center gap-1 text-[10px] font-black text-amber-500 uppercase tracking-widest">
-                    <i className="fas fa-star"></i> {averageRating}
-                 </div>
-               </div>
-             </div>
-             <div className="bg-white px-5 py-4 rounded-2xl border border-slate-100 text-right shadow-sm flex-shrink-0">
-               <p className="text-xl font-black text-blue-600">Ksh {listing.price.toLocaleString()}</p>
-               <p className="text-[8px] text-slate-400 font-black uppercase tracking-widest mt-0.5">
-                 {listing.unitType === UnitType.BUSINESS_HOUSE ? 'Lease' : (listing.pricePeriod === 'monthly' ? 'Monthly' : 'Nightly')}
-               </p>
-             </div>
+            <div className="flex-1">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="bg-blue-600 text-white text-[8px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest">
+                  Listed {new Date(listing.dateListed).toLocaleDateString()}
+                </span>
+                {listing.hasParking && <span className="bg-slate-200 text-slate-700 text-[8px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest flex items-center gap-1"><i className="fas fa-car text-[7px]"></i> Parking</span>}
+                {listing.isPetsFriendly && <span className="bg-orange-100 dark:bg-orange-900/20 text-orange-700 dark:text-orange-400 text-[8px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest flex items-center gap-1"><i className="fas fa-dog text-[7px]"></i> Pets OK</span>}
+              </div>
+              <h1 className="text-2xl font-black text-slate-900 dark:text-slate-100 leading-tight tracking-tight">{listing.title}</h1>
+              <div className="flex items-center gap-2 mt-2">
+                <p className="text-xs text-slate-500 font-bold"><i className="fas fa-location-dot text-red-500 mr-1"></i> {listing.locationName}</p>
+                <div className="w-1 h-1 bg-slate-300 rounded-full"></div>
+                <div className="flex items-center gap-1 text-[10px] font-black text-amber-500 uppercase tracking-widest">
+                  <i className="fas fa-star"></i> {averageRating}
+                </div>
+              </div>
+            </div>
+            <div className="bg-white dark:bg-slate-800 px-5 py-4 rounded-2xl border border-slate-100 dark:border-slate-700 text-right shadow-sm flex-shrink-0">
+              <p className="text-xl font-black text-blue-600">Ksh {listing.price.toLocaleString()}</p>
+              <p className="text-[8px] text-slate-400 font-black uppercase tracking-widest mt-0.5">
+                {listing.unitType === UnitType.BUSINESS_HOUSE ? 'Lease' : (listing.pricePeriod === 'monthly' ? 'Monthly' : 'Nightly')}
+              </p>
+            </div>
           </div>
         </div>
 
         {/* Reviews Section */}
         <div className="px-2 space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="font-black text-slate-900 text-xs uppercase tracking-[0.2em] flex items-center gap-2">
-               <div className="w-1 h-4 bg-amber-500 rounded-full"></div> Resident Feedback
+            <h3 className="font-black text-slate-900 dark:text-slate-100 text-xs uppercase tracking-[0.2em] flex items-center gap-2">
+              <div className="w-1 h-4 bg-amber-500 rounded-full"></div> Resident Feedback
             </h3>
           </div>
           <div className="flex gap-4 overflow-x-auto no-scrollbar snap-x snap-mandatory -mx-4 px-4 pb-2">
             {listing.reviews.length > 0 ? listing.reviews.map(review => (
-              <div key={review.id} className="snap-start flex-shrink-0 w-80 bg-white p-5 rounded-3xl border border-slate-100 space-y-3 shadow-sm">
+              <div key={review.id} className="snap-start flex-shrink-0 w-80 bg-white dark:bg-slate-800 p-5 rounded-3xl border border-slate-100 dark:border-slate-700 space-y-3 shadow-sm">
                 <div className="flex justify-between items-center">
                   <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center text-[10px] font-black">{review.userName.substring(0,2).toUpperCase()}</div>
+                    <div className="w-8 h-8 rounded-full bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 flex items-center justify-center text-[10px] font-black">{review.userName.substring(0, 2).toUpperCase()}</div>
                     <div>
-                      <p className="text-[10px] font-black text-slate-800 uppercase tracking-tighter">{review.userName}</p>
-                      <p className="text-[8px] text-slate-400 font-bold">{review.date}</p>
+                      <p className="text-[10px] font-black text-slate-800 dark:text-slate-200 uppercase tracking-tighter">{review.userName}</p>
+                      <p className="text-[8px] text-slate-400 dark:text-slate-500 font-bold">{review.date}</p>
                     </div>
                   </div>
                   <div className="flex gap-0.5 text-[8px] text-amber-500">{Array.from({ length: 5 }).map((_, i) => (<i key={i} className={`${i < review.rating ? 'fas' : 'far'} fa-star`}></i>))}</div>
                 </div>
-                <p className="text-xs text-slate-600 italic line-clamp-3">"{review.comment}"</p>
+                <p className="text-xs text-slate-600 dark:text-slate-300 italic line-clamp-3">"{review.comment}"</p>
               </div>
-            )) : <div className="w-full text-center py-6 text-slate-400 text-[10px] uppercase font-black tracking-widest bg-slate-50 rounded-3xl">No reviews yet</div>}
+            )) : <div className="w-full text-center py-6 text-slate-400 text-[10px] uppercase font-black tracking-widest bg-slate-50 dark:bg-slate-900 rounded-3xl">No reviews yet</div>}
           </div>
         </div>
 
@@ -167,13 +167,13 @@ const ListingDetail: React.FC<ListingDetailProps> = ({ listing, onBack, onUnlock
         <div className="px-1">
           {!canSeeContact ? (
             currentUser?.role === UserRole.TENANT ? (
-              <div className="bg-white border-2 border-blue-600 rounded-[2.5rem] p-8 text-center space-y-5 shadow-2xl shadow-blue-50 relative overflow-hidden">
+              <div className="bg-white dark:bg-slate-900 border-2 border-blue-600 rounded-[2.5rem] p-8 text-center space-y-5 shadow-2xl dark:shadow-none shadow-blue-50 relative overflow-hidden">
                 <div className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center text-white text-2xl mx-auto shadow-xl">
                   <i className="fas fa-lock"></i>
                 </div>
                 <div>
-                  <h4 className="font-black text-slate-900 text-xl tracking-tight uppercase">Reveal Landlord</h4>
-                  <p className="text-xs text-slate-500 mt-2">Unlock contact details for <span className="text-blue-600 font-black">Ksh {unlockFee}</span></p>
+                  <h4 className="font-black text-slate-900 dark:text-slate-100 text-xl tracking-tight uppercase">Reveal Landlord</h4>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">Unlock contact details for <span className="text-blue-600 font-black">Ksh {unlockFee}</span></p>
                 </div>
                 <button onClick={onUnlock} className="w-full py-5 bg-blue-600 text-white font-black rounded-2xl shadow-xl active:scale-95 transition-all text-[11px] uppercase tracking-widest">
                   Unlock via M-Pesa <i className="fas fa-arrow-right ml-2"></i>
@@ -185,32 +185,32 @@ const ListingDetail: React.FC<ListingDetailProps> = ({ listing, onBack, onUnlock
               </div>
             )
           ) : (
-            <div className="bg-green-50 border-2 border-green-500 rounded-[2.5rem] p-8 space-y-6 shadow-xl">
-               <div className="flex items-center gap-4 border-b border-green-100 pb-6">
-                  <div className="w-14 h-14 bg-green-500 rounded-2xl flex items-center justify-center text-white text-2xl shadow-lg shadow-green-200">
-                    <i className="fas fa-user-tie"></i>
+            <div className="bg-green-50 dark:bg-green-900/20 border-2 border-green-500 rounded-[2.5rem] p-8 space-y-6 shadow-xl dark:shadow-none">
+              <div className="flex items-center gap-4 border-b border-green-100 dark:border-green-800 pb-6">
+                <div className="w-14 h-14 bg-green-500 rounded-2xl flex items-center justify-center text-white text-2xl shadow-lg shadow-green-200 dark:shadow-none">
+                  <i className="fas fa-user-tie"></i>
+                </div>
+                <div>
+                  <h4 className="font-black text-slate-900 dark:text-slate-100 text-lg leading-tight">{listing.landlordName}</h4>
+                  <p className="text-[10px] text-green-600 dark:text-green-400 font-black uppercase tracking-widest flex items-center gap-1 mt-1">
+                    <i className="fas fa-check-circle"></i> {isLandlordOfThis ? 'Your Listing' : 'Verified Owner'}
+                  </p>
+                </div>
+              </div>
+              <div className="space-y-3">
+                <a href={`tel:${listing.landlordPhone}`} className="flex items-center justify-between p-5 bg-white dark:bg-slate-800 rounded-2xl border border-green-100 dark:border-green-900 shadow-sm active:scale-98 transition-all">
+                  <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 rounded-xl bg-green-50 dark:bg-green-900/40 text-green-600 dark:text-green-400 flex items-center justify-center"><i className="fas fa-phone-alt"></i></div>
+                    <div><p className="text-[8px] text-slate-400 dark:text-slate-500 font-black uppercase tracking-widest">Call Now</p><p className="text-sm font-black text-slate-800 dark:text-slate-100 tracking-tight">{listing.landlordPhone}</p></div>
                   </div>
-                  <div>
-                    <h4 className="font-black text-slate-900 text-lg leading-tight">{listing.landlordName}</h4>
-                    <p className="text-[10px] text-green-600 font-black uppercase tracking-widest flex items-center gap-1 mt-1">
-                      <i className="fas fa-check-circle"></i> {isLandlordOfThis ? 'Your Listing' : 'Verified Owner'}
-                    </p>
+                </a>
+                <a href={`mailto:${listing.landlordEmail}`} className="flex items-center justify-between p-5 bg-white dark:bg-slate-800 rounded-2xl border border-green-100 dark:border-green-900 shadow-sm active:scale-98 transition-all">
+                  <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 rounded-xl bg-green-50 dark:bg-green-900/40 text-green-600 dark:text-green-400 flex items-center justify-center"><i className="fas fa-envelope"></i></div>
+                    <div><p className="text-[8px] text-slate-400 dark:text-slate-500 font-black uppercase tracking-widest">Email Landlord</p><p className="text-sm font-black text-slate-800 dark:text-slate-100 tracking-tight">{listing.landlordEmail}</p></div>
                   </div>
-               </div>
-               <div className="space-y-3">
-                 <a href={`tel:${listing.landlordPhone}`} className="flex items-center justify-between p-5 bg-white rounded-2xl border border-green-100 shadow-sm active:scale-98 transition-all">
-                   <div className="flex items-center gap-4">
-                     <div className="w-10 h-10 rounded-xl bg-green-50 text-green-600 flex items-center justify-center"><i className="fas fa-phone-alt"></i></div>
-                     <div><p className="text-[8px] text-slate-400 font-black uppercase tracking-widest">Call Now</p><p className="text-sm font-black text-slate-800 tracking-tight">{listing.landlordPhone}</p></div>
-                   </div>
-                 </a>
-                 <a href={`mailto:${listing.landlordEmail}`} className="flex items-center justify-between p-5 bg-white rounded-2xl border border-green-100 shadow-sm active:scale-98 transition-all">
-                   <div className="flex items-center gap-4">
-                     <div className="w-10 h-10 rounded-xl bg-green-50 text-green-600 flex items-center justify-center"><i className="fas fa-envelope"></i></div>
-                     <div><p className="text-[8px] text-slate-400 font-black uppercase tracking-widest">Email Landlord</p><p className="text-sm font-black text-slate-800 tracking-tight">{listing.landlordEmail}</p></div>
-                   </div>
-                 </a>
-               </div>
+                </a>
+              </div>
             </div>
           )}
         </div>

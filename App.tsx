@@ -22,6 +22,19 @@ const App: React.FC = () => {
   const [filterType, setFilterType] = useState<UnitType | 'All'>('All');
   const [listings, setListings] = useState<Listing[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    return localStorage.getItem('theme') === 'dark';
+  });
+
+  useEffect(() => {
+    if (isDarkMode) {
+      document.documentElement.classList.add('dark');
+      localStorage.setItem('theme', 'dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+      localStorage.setItem('theme', 'light');
+    }
+  }, [isDarkMode]);
 
   useEffect(() => {
     const loadData = async () => {
@@ -211,7 +224,15 @@ const App: React.FC = () => {
 
   const renderMainContent = () => {
     if (activeTab === 'profile') {
-      return <Settings currentUser={currentUser} onLogout={handleLogout} onUpdateUser={handleAuthenticated} />;
+      return (
+        <Settings
+          currentUser={currentUser}
+          onLogout={handleLogout}
+          onUpdateUser={handleAuthenticated}
+          isDarkMode={isDarkMode}
+          onToggleTheme={() => setIsDarkMode(!isDarkMode)}
+        />
+      );
     }
 
     if (currentUser.role === UserRole.LANDLORD) {
@@ -263,7 +284,7 @@ const App: React.FC = () => {
             <input
               type="text"
               placeholder="Search by area or unit type..."
-              className="w-full pl-11 pr-4 py-4 bg-white border border-slate-200 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none shadow-sm"
+              className="w-full pl-11 pr-4 py-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none shadow-sm text-slate-800 dark:text-slate-100"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
@@ -280,20 +301,20 @@ const App: React.FC = () => {
     (selectedListing?.unitType === UnitType.BUSINESS_HOUSE ? UNLOCK_FEE_BUSINESS : UNLOCK_FEE_STANDARD);
 
   return (
-    <div className="min-h-screen pb-24 bg-slate-50">
-      <header className="sticky top-0 z-30 bg-white/80 backdrop-blur-md px-4 py-3 border-b border-slate-100 flex justify-between items-center">
+    <div className="min-h-screen pb-24 bg-slate-50 dark:bg-slate-950 transition-colors duration-300">
+      <header className="sticky top-0 z-30 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md px-4 py-3 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 bg-blue-600 rounded-xl flex items-center justify-center text-white text-lg shadow-lg shadow-blue-100">
+          <div className="w-9 h-9 bg-blue-600 rounded-xl flex items-center justify-center text-white text-lg shadow-lg shadow-blue-100 dark:shadow-none">
             <i className="fas fa-house-chimney"></i>
           </div>
           <div>
-            <h1 className="text-sm font-black text-slate-800 tracking-tight">Kimana Space</h1>
-            <p className="text-[9px] text-green-600 font-bold flex items-center gap-1 uppercase tracking-widest">
+            <h1 className="text-sm font-black text-slate-800 dark:text-slate-100 tracking-tight">Kimana Space</h1>
+            <p className="text-[9px] text-green-600 dark:text-green-400 font-bold flex items-center gap-1 uppercase tracking-widest">
               <i className="fas fa-shield-alt text-[7px]"></i> Verified Marketplace
             </p>
           </div>
         </div>
-        <button onClick={() => setActiveTab('profile')} className="w-9 h-9 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-500">
+        <button onClick={() => setActiveTab('profile')} className="w-9 h-9 rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-500 dark:text-slate-400">
           <i className="fas fa-user-circle"></i>
         </button>
       </header>
@@ -310,31 +331,31 @@ const App: React.FC = () => {
         <i className="fas fa-headset group-hover:rotate-12 transition-transform"></i>
       </button>
 
-      <nav className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur px-8 py-3 flex justify-around items-center border-t border-slate-100 safe-area-inset-bottom">
+      <nav className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur px-8 py-3 flex justify-around items-center border-t border-slate-100 dark:border-slate-800 safe-area-inset-bottom">
         <button
           onClick={() => { setActiveTab('home'); setSelectedListing(null) }}
-          className={`flex flex-col items-center gap-1 transition-colors ${activeTab === 'home' ? 'text-blue-600' : 'text-slate-400'}`}
+          className={`flex flex-col items-center gap-1 transition-colors ${activeTab === 'home' ? 'text-blue-600' : 'text-slate-400 dark:text-slate-500'}`}
         >
           <i className="fas fa-home text-lg"></i>
           <span className="text-[9px] font-black uppercase tracking-tighter">Market</span>
         </button>
         <button
           onClick={() => { setActiveTab('search'); setSelectedListing(null) }}
-          className={`flex flex-col items-center gap-1 transition-colors ${activeTab === 'search' ? 'text-blue-600' : 'text-slate-400'}`}
+          className={`flex flex-col items-center gap-1 transition-colors ${activeTab === 'search' ? 'text-blue-600' : 'text-slate-400 dark:text-slate-500'}`}
         >
           <i className="fas fa-map-marked-alt text-lg"></i>
           <span className="text-[9px] font-black uppercase tracking-tighter">Explore</span>
         </button>
         <button
           onClick={() => { setActiveTab('listings'); setSelectedListing(null) }}
-          className={`flex flex-col items-center gap-1 transition-colors ${activeTab === 'listings' ? 'text-blue-600' : 'text-slate-400'}`}
+          className={`flex flex-col items-center gap-1 transition-colors ${activeTab === 'listings' ? 'text-blue-600' : 'text-slate-400 dark:text-slate-500'}`}
         >
           <i className="fas fa-heart text-lg"></i>
           <span className="text-[9px] font-black uppercase tracking-tighter">Favorites</span>
         </button>
         <button
           onClick={() => { setActiveTab('profile'); setSelectedListing(null) }}
-          className={`flex flex-col items-center gap-1 transition-colors ${activeTab === 'profile' ? 'text-blue-600' : 'text-slate-400'}`}
+          className={`flex flex-col items-center gap-1 transition-colors ${activeTab === 'profile' ? 'text-blue-600' : 'text-slate-400 dark:text-slate-500'}`}
         >
           <i className="fas fa-cog text-lg"></i>
           <span className="text-[9px] font-black uppercase tracking-tighter">Account</span>

@@ -15,8 +15,8 @@ interface LandlordDashboardProps {
   onViewPublicDetails: (listing: Listing) => void;
 }
 
-const LandlordDashboard: React.FC<LandlordDashboardProps> = ({ 
-  listings, setListings, onUpdateListing, landlordId, landlordName, landlordPhone, landlordEmail, onViewPublicDetails 
+const LandlordDashboard: React.FC<LandlordDashboardProps> = ({
+  listings, setListings, onUpdateListing, landlordId, landlordName, landlordPhone, landlordEmail, onViewPublicDetails
 }) => {
   const [showForm, setShowForm] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -24,7 +24,7 @@ const LandlordDashboard: React.FC<LandlordDashboardProps> = ({
   const [pendingListing, setPendingListing] = useState<Listing | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  
+
   const [currentFormListing, setCurrentFormListing] = useState<Partial<Listing>>({
     unitType: UnitType.BEDSITTER,
     pricePeriod: 'monthly',
@@ -80,13 +80,13 @@ const LandlordDashboard: React.FC<LandlordDashboardProps> = ({
 
     const results = await Promise.all(filePromises);
     const combined = [...newPhotos, ...results];
-    
+
     setCurrentFormListing({
       ...currentFormListing,
       photos: combined
     });
     setIsUploading(false);
-    
+
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -116,7 +116,7 @@ const LandlordDashboard: React.FC<LandlordDashboardProps> = ({
       onUpdateListing(finalListing);
       setShowForm(false);
     } else {
-      const expiryDate = currentFormListing.unitType === UnitType.AIRBNB 
+      const expiryDate = currentFormListing.unitType === UnitType.AIRBNB
         ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
         : undefined;
 
@@ -131,7 +131,7 @@ const LandlordDashboard: React.FC<LandlordDashboardProps> = ({
         dateListed: new Date().toISOString(),
         subscriptionExpiry: expiryDate
       };
-      
+
       setPendingListing(newListing);
       setShowPayment(true);
     }
@@ -158,8 +158,8 @@ const LandlordDashboard: React.FC<LandlordDashboardProps> = ({
     <div className="space-y-6 pb-10">
       <div className="flex justify-between items-center">
         <div>
-          <h2 className="text-2xl font-black text-slate-800 tracking-tight">Management Suite</h2>
-          <p className="text-xs text-slate-500 font-medium tracking-tight">Active Properties & Tenant Feedback</p>
+          <h2 className="text-2xl font-black text-slate-800 dark:text-slate-100 tracking-tight">Management Suite</h2>
+          <p className="text-xs text-slate-500 dark:text-slate-400 font-medium tracking-tight">Active Properties & Tenant Feedback</p>
         </div>
         <button onClick={handleOpenAddForm} className="bg-blue-600 text-white px-4 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg active:scale-95 flex items-center gap-2">
           <i className="fas fa-plus"></i> Add New Unit
@@ -168,7 +168,7 @@ const LandlordDashboard: React.FC<LandlordDashboardProps> = ({
 
       <div className="grid grid-cols-1 gap-4">
         {landlordListings.length > 0 ? landlordListings.map(l => (
-          <div key={l.id} className="bg-white p-4 rounded-3xl border border-slate-100 flex gap-4 items-center shadow-sm hover:border-blue-200 transition-colors">
+          <div key={l.id} className="bg-white dark:bg-slate-900 p-4 rounded-3xl border border-slate-100 dark:border-slate-800 flex gap-4 items-center shadow-sm hover:border-blue-200 dark:hover:border-blue-800 transition-colors">
             <div className="relative cursor-pointer flex-shrink-0" onClick={() => onViewPublicDetails(l)}>
               <img src={l.photos[0]} className="w-20 h-20 object-cover rounded-2xl" alt="" />
               <div className="absolute -top-1 -right-1 bg-blue-600 text-white w-5 h-5 rounded-lg flex items-center justify-center text-[9px] font-bold border-2 border-white">
@@ -177,15 +177,15 @@ const LandlordDashboard: React.FC<LandlordDashboardProps> = ({
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between mb-1">
-                <h3 className="font-bold text-slate-800 truncate text-sm">{l.title}</h3>
-                <button onClick={() => handleOpenEditForm(l)} className="text-slate-300 hover:text-blue-500"><i className="fas fa-edit text-xs"></i></button>
+                <h3 className="font-bold text-slate-800 dark:text-slate-100 truncate text-sm">{l.title}</h3>
+                <button onClick={() => handleOpenEditForm(l)} className="text-slate-300 dark:text-slate-600 hover:text-blue-500"><i className="fas fa-edit text-xs"></i></button>
               </div>
               <p className="text-[9px] text-slate-400 font-black uppercase tracking-widest mb-2">Listed {new Date(l.dateListed).toLocaleDateString()}</p>
               <div className="flex items-center gap-2">
-                <button onClick={() => onUpdateListing({ ...l, isVacant: !l.isVacant })} className={`text-[8px] font-black px-3 py-1.5 rounded-lg uppercase tracking-widest ${l.isVacant ? 'bg-green-50 text-green-700' : 'bg-slate-100 text-slate-500'}`}>
+                <button onClick={() => onUpdateListing({ ...l, isVacant: !l.isVacant })} className={`text-[8px] font-black px-3 py-1.5 rounded-lg uppercase tracking-widest ${l.isVacant ? 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400'}`}>
                   {l.isVacant ? 'VACANT' : 'OCCUPIED'}
                 </button>
-                <button onClick={() => onViewPublicDetails(l)} className="text-[8px] font-black px-3 py-1.5 rounded-lg bg-blue-50 text-blue-600 uppercase tracking-widest">
+                <button onClick={() => onViewPublicDetails(l)} className="text-[8px] font-black px-3 py-1.5 rounded-lg bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 uppercase tracking-widest">
                   View Reviews ({l.reviews.length})
                 </button>
               </div>
@@ -193,40 +193,40 @@ const LandlordDashboard: React.FC<LandlordDashboardProps> = ({
           </div>
         )) : (
           <div className="py-12 text-center bg-white rounded-3xl border border-dashed border-slate-200">
-             <i className="fas fa-house-chimney-user text-3xl text-slate-200 mb-2"></i>
-             <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest">No assets listed yet</p>
+            <i className="fas fa-house-chimney-user text-3xl text-slate-200 mb-2"></i>
+            <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest">No assets listed yet</p>
           </div>
         )}
       </div>
 
       {showForm && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-4">
-          <div className="bg-white w-full max-w-lg rounded-t-3xl sm:rounded-3xl p-6 space-y-4 overflow-y-auto max-h-[90vh]">
+          <div className="bg-white dark:bg-slate-900 w-full max-w-lg rounded-t-3xl sm:rounded-3xl p-6 space-y-4 overflow-y-auto max-h-[90vh]">
             <div className="flex justify-between items-center mb-2">
-              <h3 className="text-xl font-black text-slate-800">{isEditing ? 'Update Property' : 'Submit New Asset'}</h3>
+              <h3 className="text-xl font-black text-slate-800 dark:text-slate-100">{isEditing ? 'Update Property' : 'Submit New Asset'}</h3>
               <button onClick={() => setShowForm(false)} className="text-slate-400"><i className="fas fa-times"></i></button>
             </div>
-            
+
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-1">
                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Property Name</label>
-                <input required type="text" placeholder="e.g. Riverside Apartments" className="w-full p-4 bg-slate-50 rounded-2xl outline-none border border-slate-100 focus:border-blue-500" value={currentFormListing.title || ''} onChange={(e) => setCurrentFormListing({...currentFormListing, title: e.target.value})} />
+                <input required type="text" placeholder="e.g. Riverside Apartments" className="w-full p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl outline-none border border-slate-100 dark:border-slate-700 focus:border-blue-500 dark:text-slate-100" value={currentFormListing.title || ''} onChange={(e) => setCurrentFormListing({ ...currentFormListing, title: e.target.value })} />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Unit Type</label>
-                  <select className="w-full p-4 bg-slate-50 rounded-2xl outline-none border border-slate-100 font-bold text-sm" value={currentFormListing.unitType} onChange={(e) => setCurrentFormListing({...currentFormListing, unitType: e.target.value as UnitType, pricePeriod: e.target.value === UnitType.AIRBNB ? 'nightly' : 'monthly'})}>
+                  <select className="w-full p-4 bg-slate-50 rounded-2xl outline-none border border-slate-100 font-bold text-sm" value={currentFormListing.unitType} onChange={(e) => setCurrentFormListing({ ...currentFormListing, unitType: e.target.value as UnitType, pricePeriod: e.target.value === UnitType.AIRBNB ? 'nightly' : 'monthly' })}>
                     {Object.values(UnitType).map(t => <option key={t} value={t}>{t}</option>)}
                   </select>
                 </div>
                 <div className="space-y-1">
                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Location/Area</label>
-                  <select 
-                    required 
-                    className="w-full p-4 bg-slate-50 rounded-2xl outline-none border border-slate-100 font-bold text-sm" 
-                    value={currentFormListing.locationName || ''} 
-                    onChange={(e) => setCurrentFormListing({...currentFormListing, locationName: e.target.value})}
+                  <select
+                    required
+                    className="w-full p-4 bg-slate-50 rounded-2xl outline-none border border-slate-100 font-bold text-sm"
+                    value={currentFormListing.locationName || ''}
+                    onChange={(e) => setCurrentFormListing({ ...currentFormListing, locationName: e.target.value })}
                   >
                     <option value="" disabled>Select Area</option>
                     {KIMANA_LOCATIONS.map(loc => <option key={loc} value={loc}>{loc}</option>)}
@@ -237,28 +237,28 @@ const LandlordDashboard: React.FC<LandlordDashboardProps> = ({
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Price ({currentFormListing.pricePeriod})</label>
-                  <input required type="number" placeholder="Ksh" className="w-full p-4 bg-slate-50 rounded-2xl outline-none border border-slate-100" value={currentFormListing.price || ''} onChange={(e) => setCurrentFormListing({...currentFormListing, price: Number(e.target.value)})} />
+                  <input required type="number" placeholder="Ksh" className="w-full p-4 bg-slate-50 rounded-2xl outline-none border border-slate-100" value={currentFormListing.price || ''} onChange={(e) => setCurrentFormListing({ ...currentFormListing, price: Number(e.target.value) })} />
                 </div>
                 <div className="space-y-1">
                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Deposit Req.</label>
-                  <input required type="number" placeholder="Ksh" className="w-full p-4 bg-slate-50 rounded-2xl outline-none border border-slate-100" value={currentFormListing.deposit || ''} onChange={(e) => setCurrentFormListing({...currentFormListing, deposit: Number(e.target.value)})} />
+                  <input required type="number" placeholder="Ksh" className="w-full p-4 bg-slate-50 rounded-2xl outline-none border border-slate-100" value={currentFormListing.deposit || ''} onChange={(e) => setCurrentFormListing({ ...currentFormListing, deposit: Number(e.target.value) })} />
                 </div>
               </div>
 
               <div className="space-y-2">
                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Amenities</label>
                 <div className="flex gap-3">
-                  <button 
-                    type="button" 
-                    onClick={() => setCurrentFormListing({...currentFormListing, hasParking: !currentFormListing.hasParking})}
+                  <button
+                    type="button"
+                    onClick={() => setCurrentFormListing({ ...currentFormListing, hasParking: !currentFormListing.hasParking })}
                     className={`flex-1 py-3 px-4 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 border-2 transition-all ${currentFormListing.hasParking ? 'bg-blue-600 border-blue-600 text-white' : 'bg-white border-slate-100 text-slate-400'}`}
                   >
                     <i className="fas fa-car"></i> Parking
                   </button>
                   {currentFormListing.unitType === UnitType.AIRBNB && (
-                    <button 
-                      type="button" 
-                      onClick={() => setCurrentFormListing({...currentFormListing, isPetsFriendly: !currentFormListing.isPetsFriendly})}
+                    <button
+                      type="button"
+                      onClick={() => setCurrentFormListing({ ...currentFormListing, isPetsFriendly: !currentFormListing.isPetsFriendly })}
                       className={`flex-1 py-3 px-4 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 border-2 transition-all ${currentFormListing.isPetsFriendly ? 'bg-orange-500 border-orange-500 text-white' : 'bg-white border-slate-100 text-slate-400'}`}
                     >
                       <i className="fas fa-dog"></i> Pets OK
@@ -269,36 +269,36 @@ const LandlordDashboard: React.FC<LandlordDashboardProps> = ({
 
               <div className="space-y-1">
                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Property Description</label>
-                <textarea required rows={3} placeholder="Tell tenants about the features, security, water supply, etc." className="w-full p-4 bg-slate-50 rounded-2xl outline-none border border-slate-100" value={currentFormListing.description || ''} onChange={(e) => setCurrentFormListing({...currentFormListing, description: e.target.value})}></textarea>
+                <textarea required rows={3} placeholder="Tell tenants about the features, security, water supply, etc." className="w-full p-4 bg-slate-50 rounded-2xl outline-none border border-slate-100" value={currentFormListing.description || ''} onChange={(e) => setCurrentFormListing({ ...currentFormListing, description: e.target.value })}></textarea>
               </div>
 
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Photos ({currentFormListing.photos?.length || 0}/8 Required)</label>
-                  <button 
-                    type="button" 
+                  <button
+                    type="button"
                     onClick={() => fileInputRef.current?.click()}
                     className="text-[10px] font-black text-blue-600 uppercase tracking-widest flex items-center gap-1"
                   >
                     <i className="fas fa-upload"></i> Upload from Gallery
                   </button>
                 </div>
-                
-                <input 
-                  type="file" 
-                  ref={fileInputRef} 
-                  onChange={handleFileChange} 
-                  multiple 
-                  accept="image/*" 
-                  className="hidden" 
+
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleFileChange}
+                  multiple
+                  accept="image/*"
+                  className="hidden"
                 />
 
                 <div className="grid grid-cols-4 gap-2">
                   {currentFormListing.photos?.map((photo, index) => (
                     <div key={index} className="relative aspect-square rounded-xl overflow-hidden bg-slate-100 group">
                       <img src={photo} className="w-full h-full object-cover" alt="" />
-                      <button 
-                        type="button" 
+                      <button
+                        type="button"
                         onClick={() => removePhoto(index)}
                         className="absolute top-1 right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-[8px] shadow-lg opacity-0 group-hover:opacity-100 transition-opacity"
                       >
@@ -307,8 +307,8 @@ const LandlordDashboard: React.FC<LandlordDashboardProps> = ({
                     </div>
                   ))}
                   {(currentFormListing.photos?.length || 0) < 8 && (
-                    <button 
-                      type="button" 
+                    <button
+                      type="button"
                       onClick={() => fileInputRef.current?.click()}
                       className="aspect-square rounded-xl border-2 border-dashed border-slate-200 flex flex-col items-center justify-center gap-1 text-slate-300 hover:border-blue-400 hover:text-blue-400 transition-all"
                     >
