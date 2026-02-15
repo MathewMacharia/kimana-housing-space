@@ -4,7 +4,7 @@ import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 import { getAnalytics, isSupported } from "firebase/analytics";
 
-// YOUR SECURE CONFIG
+// Your web app's Firebase configuration
 const firebaseConfig = {
   apiKey: "AIzaSyDyooi4MXpfk27nGTffJ3m-2nRDBBzwd7A",
   authDomain: "kimana-housing.firebaseapp.com",
@@ -15,26 +15,20 @@ const firebaseConfig = {
   measurementId: "G-LB5LHRK21J"
 };
 
-// INITIALIZE WITH A SINGLETON PATTERN
-let app;
-try {
-  // This prevents the "already initialized" error if the preview refreshes fast
-  app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
-} catch (e) {
-  console.log("App initialization skipped or handled:", e);
-  app = getApp();
-}
+// Initialize Firebase
+const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 
-// GET SERVICES
+// Initialize Services
 const auth = getAuth(app);
 const db = getFirestore(app);
 const storage = getStorage(app);
 
-// Analytics is optional and can fail in some environments
+// Analytics is optional and only initialized if supported
+let analytics;
 isSupported().then(supported => {
-  if (supported) getAnalytics(app);
+  if (supported) {
+    analytics = getAnalytics(app);
+  }
 });
 
-console.log("✅ Firebase Auth, Firestore & Storage Registered via GSTATIC 10.8.0");
-
-export { app, auth, db, storage };
+export { app, auth, db, storage, analytics };
