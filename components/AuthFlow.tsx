@@ -101,17 +101,16 @@ const AuthFlow: React.FC<AuthFlowProps> = ({ onAuthenticated }) => {
 
     setIsLoading(true);
     try {
-      // Check if identifier is email or phone
-      if (identifier.includes('@')) {
-        const userCredential = await signInWithEmailAndPassword(auth, identifier, password);
-        const profile = await FirebaseService.getUserById(userCredential.user.uid);
-        if (profile) onAuthenticated(profile);
-        else throw new Error("Profile not found");
-      } else {
-        // Prepare for Phone Login if no password provided (or handle as phone+password if your system supports it)
-        // For now, we assume if it's not email, it's a phone number for OTP
-        await handleSendOtp();
+      if (!identifier.includes('@')) {
+        alert('Phone login is temporarily disabled due to billing setup. Please use your email address.');
+        setIsLoading(false);
+        return;
       }
+
+      const userCredential = await signInWithEmailAndPassword(auth, identifier, password);
+      const profile = await FirebaseService.getUserById(userCredential.user.uid);
+      if (profile) onAuthenticated(profile);
+      else throw new Error("Profile not found");
     } catch (error: any) {
       alert(error.message || 'Login failed');
     } finally {
@@ -338,11 +337,11 @@ const AuthFlow: React.FC<AuthFlowProps> = ({ onAuthenticated }) => {
           <form onSubmit={handleLogin} className="space-y-5">
             <div id="recaptcha-container"></div>
             <div className="space-y-1">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Phone or Email</label>
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Email Address</label>
               <input
                 required
-                type="text"
-                placeholder="e.g. 0712345678 or name@email.com"
+                type="email"
+                placeholder="user@email.com"
                 className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none font-bold text-sm"
                 value={loginData.identifier}
                 onChange={e => setLoginData({ ...loginData, identifier: e.target.value })}
@@ -384,11 +383,7 @@ const AuthFlow: React.FC<AuthFlowProps> = ({ onAuthenticated }) => {
               disabled={isLoading}
               className="w-full py-5 bg-blue-600 text-white font-black rounded-2xl shadow-xl active:scale-95 transition-all flex items-center justify-center gap-2 uppercase text-xs tracking-widest mt-4"
             >
-              {isLoading ? (
-                <i className="fas fa-circle-notch animate-spin"></i>
-              ) : (
-                loginData.identifier.includes('@') ? 'Secure Login' : 'Send OTP Code'
-              )}
+              {isLoading ? <i className="fas fa-circle-notch animate-spin"></i> : 'Secure Login'}
             </button>
 
             <div className="text-center pt-2">
