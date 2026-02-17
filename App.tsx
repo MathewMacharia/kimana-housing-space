@@ -11,6 +11,8 @@ import AuthFlow from './components/AuthFlow';
 import Settings from './components/Settings';
 import ContactSupportModal from './components/ContactSupportModal';
 import { FirebaseService } from './services/db';
+import { auth } from './firebase';
+import { onAuthStateChanged } from 'firebase/auth';
 
 const App: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -37,18 +39,40 @@ const App: React.FC = () => {
   }, [isDarkMode]);
 
   useEffect(() => {
+    // Listen for auth state changes to recover sessions
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (firebaseUser) {
+        try {
+          const profile = await FirebaseService.getUserById(firebaseUser.uid);
+          if (profile) {
+            setCurrentUser(profile);
+          } else {
+            // Profile missing but auth exists - might happen during sync lag
+            console.warn("Auth session found but profile missing for UID:", firebaseUser.uid);
+          }
+        } catch (error) {
+          console.error("Failed to recover user profile", error);
+        }
+      } else {
+        setCurrentUser(null);
+      }
+      setIsLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
     const loadData = async () => {
       try {
         const fetchedListings = await FirebaseService.getListings();
         setListings(fetchedListings);
       } catch (error) {
         console.error("Cloud connection failed", error);
-      } finally {
-        setIsLoading(false);
       }
     };
     loadData();
-  }, []);
+  }, [currentUser]); // Reload listings when auth state changes to avoid permission errors
 
   const filteredListings = listings.filter(l => {
     const matchesSearch = l.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -115,6 +139,15 @@ const App: React.FC = () => {
     setActiveTab('home');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-white flex flex-col items-center justify-center p-6 text-center">
+        <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+        <p className="mt-4 text-slate-500 font-bold uppercase tracking-widest text-[10px]">Initializing Kimana Secure Session...</p>
+      </div>
+    );
+  }
 
   if (!currentUser) {
     return <AuthFlow onAuthenticated={handleAuthenticated} />;

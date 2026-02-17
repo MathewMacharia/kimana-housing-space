@@ -82,10 +82,13 @@ const AuthFlow: React.FC<AuthFlowProps> = ({ onAuthenticated }) => {
         isEncrypted: true
       };
 
+      console.log("Saving user profile to Firestore for UID:", firebaseUser.uid);
       await FirebaseService.saveUserProfile(newUser);
+      console.log("Profile sync successful");
       onAuthenticated(newUser);
     } catch (error: any) {
-      alert(error.message || 'Signup failed');
+      console.error("Signup process failed:", error);
+      alert(error.message || 'Signup failed. Please try again or check your connection.');
     } finally {
       setIsLoading(false);
     }
