@@ -3,6 +3,7 @@ import React, { useState, useRef } from 'react';
 import { Listing, UnitType } from '../types';
 import { LISTING_FEE_STANDARD, LISTING_FEE_AIRBNB_MONTHLY, LISTING_FEE_BUSINESS, KIMANA_LOCATIONS } from '../constants';
 import PaymentModal from './PaymentModal';
+import { FirebaseService } from '../services/db';
 
 interface LandlordDashboardProps {
   listings: Listing[];
@@ -23,6 +24,7 @@ const LandlordDashboard: React.FC<LandlordDashboardProps> = ({
   const [showPayment, setShowPayment] = useState(false);
   const [pendingListing, setPendingListing] = useState<Listing | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [currentFormListing, setCurrentFormListing] = useState<Partial<Listing>>({
@@ -41,6 +43,7 @@ const LandlordDashboard: React.FC<LandlordDashboardProps> = ({
 
   const handleOpenAddForm = () => {
     setIsEditing(false);
+    setSelectedFiles([]);
     setCurrentFormListing({
       unitType: UnitType.BEDSITTER,
       pricePeriod: 'monthly',
@@ -57,6 +60,7 @@ const LandlordDashboard: React.FC<LandlordDashboardProps> = ({
 
   const handleOpenEditForm = (listing: Listing) => {
     setIsEditing(true);
+    setSelectedFiles([]); // Reset for edit
     setCurrentFormListing({ ...listing });
     setShowForm(true);
   };
@@ -66,32 +70,58 @@ const LandlordDashboard: React.FC<LandlordDashboardProps> = ({
     if (!files) return;
 
     setIsUploading(true);
-    const newPhotos: string[] = [...(currentFormListing.photos || [])];
+    const newFiles = Array.from(files);
 
-    const filePromises = Array.from(files).map((file: File) => {
+    // We only allow 8 photos max for security policy
+    const currentCount = currentFormListing.photos?.length || 0;
+    const allowedNew = 8 - currentCount;
+
+    if (allowedNew <= 0) {
+      alert("Maximum 8 photos allowed.");
+      setIsUploading(false);
+      return;
+    }
+
+    const limitedFiles = newFiles.slice(0, allowedNew);
+    setSelectedFiles(prev => [...prev, ...limitedFiles]);
+
+    const previewPromises = limitedFiles.map((file: File) => {
       return new Promise<string>((resolve) => {
         const reader = new FileReader();
-        reader.onloadend = () => {
-          resolve(reader.result as string);
-        };
+        reader.onloadend = () => resolve(reader.result as string);
         reader.readAsDataURL(file);
       });
     });
 
-    const results = await Promise.all(filePromises);
-    const combined = [...newPhotos, ...results];
+    const previews = await Promise.all(previewPromises);
+    setCurrentFormListing(prev => ({
+      ...prev,
+      photos: [...(prev.photos || []), ...previews]
+    }));
 
-    setCurrentFormListing({
-      ...currentFormListing,
-      photos: combined
-    });
     setIsUploading(false);
-
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   const removePhoto = (index: number) => {
-    const updated = [...(currentFormListing.photos || [])];
+    const currentPhotos = currentFormListing.photos || [];
+    const photoToRemove = currentPhotos[index];
+
+    // If it's a new upload (base64/blob preview), we should also remove from selectedFiles
+    // Note: This logic assumes new uploads are appended. 
+    // To be safer, we'd need to track which photo index maps to which file index.
+    // For simplicity, we reset selectedFiles if user removes photos during creation.
+    if (photoToRemove.startsWith('data:')) {
+      const newFiles = [...selectedFiles];
+      // Find the file that matches this preview (rough check)
+      // Alternatively, just clear it and ask for re-upload if logic gets complex
+      setSelectedFiles([]);
+      setCurrentFormListing({ ...currentFormListing, photos: [] });
+      alert("Photos reset. Please re-upload your 8 photos to ensure correct sync.");
+      return;
+    }
+
+    const updated = [...currentPhotos];
     updated.splice(index, 1);
     setCurrentFormListing({
       ...currentFormListing,
@@ -137,12 +167,56 @@ const LandlordDashboard: React.FC<LandlordDashboardProps> = ({
     }
   };
 
-  const handlePaymentSuccess = () => {
-    if (pendingListing) {
-      setListings(prev => [...prev, pendingListing]);
+  const handlePaymentSuccess = async () => {
+    if (!pendingListing) return;
+
+    setIsUploading(true);
+    try {
+      let finalPhotoUrls: string[] = [...pendingListing.photos];
+
+      // If we have real files to upload
+      if (selectedFiles.length > 0) {
+        console.log("Uploading photos to Firebase Storage...");
+        const uploadPromises = selectedFiles.map((file, idx) => {
+          const extension = file.name.split('.').pop();
+          const path = `listings/${pendingListing.id}/photo_${idx}_${Date.now()}.${extension}`;
+          return FirebaseService.uploadPropertyImage(path, file);
+        });
+
+        // Filter out base64 previews and keep only existing remote URLs (for edits)
+        const existingRemoteUrls = pendingListing.photos.filter(p => !p.startsWith('data:'));
+        const newRemoteUrls = await Promise.all(uploadPromises);
+        finalPhotoUrls = [...existingRemoteUrls, ...newRemoteUrls];
+      }
+
+      const listingToSave = {
+        ...pendingListing,
+        photos: finalPhotoUrls,
+        isVerified: true // Auto-verify for now after "payment"
+      };
+
+      console.log("Saving listing to Firestore...");
+      // Logic for new vs edit
+      if (isEditing) {
+        await FirebaseService.updateListing(listingToSave.id, listingToSave);
+      } else {
+        await FirebaseService.createListing(listingToSave);
+      }
+
+      // Update local state (refresh listings)
+      const fetchedListings = await FirebaseService.getListings();
+      setListings(fetchedListings);
+
       setShowPayment(false);
       setShowForm(false);
       setPendingListing(null);
+      setSelectedFiles([]);
+      alert("Property launched successfully! It is now live on the Kimana Market.");
+    } catch (error) {
+      console.error("Failed to launch asset:", error);
+      alert("System Error: Failed to upload photos or save listing. Check your billing status.");
+    } finally {
+      setIsUploading(false);
     }
   };
 

@@ -74,11 +74,19 @@ export const FirebaseService = {
   },
 
   // Image Storage
-  async uploadPropertyImage(path: string, base64Data: string): Promise<string> {
+  async uploadPropertyImage(path: string, file: File | string): Promise<string> {
     if (!storage) throw new Error("Storage not initialized");
     const storageRef = ref(storage, path);
-    const cleanData = base64Data.includes(",") ? base64Data.split(",")[1] : base64Data;
-    await uploadString(storageRef, cleanData, 'base64');
+
+    if (typeof file === 'string') {
+      const cleanData = file.includes(",") ? file.split(",")[1] : file;
+      await uploadString(storageRef, cleanData, 'base64');
+    } else {
+      // Direct file upload for better performance/quality
+      const { uploadBytes } = await import("firebase/storage");
+      await uploadBytes(storageRef, file);
+    }
+
     return await getDownloadURL(storageRef);
   },
 
