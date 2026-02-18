@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { User, UserRole, Listing, UnitType, Review, SavedSearch } from './types';
 import { UNLOCK_FEE_STANDARD, UNLOCK_FEE_AIRBNB, UNLOCK_FEE_BUSINESS, MOCK_LISTINGS, LOCATIONS_HIERARCHY } from './constants';
