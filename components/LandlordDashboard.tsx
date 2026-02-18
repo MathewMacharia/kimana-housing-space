@@ -198,7 +198,7 @@ const LandlordDashboard: React.FC<LandlordDashboardProps> = ({
         setIsSubmitting(false);
       }
     } else {
-      const newListingData: Omit<Listing, 'id'> = {
+      const newListingData: any = {
         title: currentFormListing.title || '',
         description: currentFormListing.description || '',
         unitType: currentFormListing.unitType || UnitType.BEDSITTER,
@@ -219,11 +219,12 @@ const LandlordDashboard: React.FC<LandlordDashboardProps> = ({
         reviews: [],
         dateListed: new Date().toISOString(),
         hasParking: !!currentFormListing.hasParking,
-        isPetsFriendly: !!currentFormListing.isPetsFriendly,
-        subscriptionExpiry: currentFormListing.unitType === UnitType.AIRBNB
-          ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
-          : undefined
+        isPetsFriendly: !!currentFormListing.isPetsFriendly
       };
+
+      if (currentFormListing.unitType === UnitType.AIRBNB) {
+        newListingData.subscriptionExpiry = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+      }
 
       setPendingListing(newListingData);
       setShowPayment(true);
