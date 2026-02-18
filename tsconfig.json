@@ -11,11 +11,8 @@
     ],
     "skipLibCheck": true,
     "types": [
-      "vitest/globals",
-      "@testing-library/jest-dom",
       "node"
     ],
-    "baseUrl": ".",
     "moduleResolution": "bundler",
     "isolatedModules": true,
     "moduleDetection": "force",
@@ -23,13 +20,10 @@
     "jsx": "react-jsx",
     "paths": {
       "@/*": [
-        "./src/*"
+        "./*"
       ]
     },
     "allowImportingTsExtensions": true,
     "noEmit": true
-  },
-  "include": [
-    "."
-  ]
+  }
 }

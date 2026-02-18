@@ -52,6 +52,13 @@ export interface Listing {
   isPetsFriendly: boolean;
 }
 
+export interface SavedSearch {
+  id: string;
+  query: string;
+  unitType: UnitType | 'All';
+  dateSaved: string;
+}
+
 export interface User {
   id: string;
   name: string;
@@ -59,5 +66,7 @@ export interface User {
   email: string;
   role: UserRole;
   unlockedListings: string[];
+  favorites: string[];
+  savedSearches: SavedSearch[];
   isEncrypted: boolean;
 }

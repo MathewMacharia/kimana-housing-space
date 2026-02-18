@@ -4,23 +4,48 @@ import { Listing, UnitType, Review } from './types';
 const generateMockImages = (seed: string, count: number) => 
   Array.from({ length: count }, (_, i) => `https://picsum.photos/seed/${seed}${i}/800/600`);
 
-export const KIMANA_LOCATIONS = [
-  'Town Centre',
-  'Katoo Stadium Route',
-  'Church on the Rock',
-  'PEFA Church Area',
-  'Korir Hospital Area',
-  'Kwa Mnara',
-  'Old Equity',
-  'Rosama Area',
-  'Shanturi Area',
-  'New Equity Bank Area',
-  'Likizo Resort Area',
-  'Nkadayo',
-  'Full Gospel Area',
-  'Blay Area',
-  'Siro Nosim Area'
-];
+export const LOCATIONS_HIERARCHY = {
+  'Kimana': [
+    'Town Centre',
+    'Katoo Stadium Route',
+    'Church on the Rock',
+    'PEFA Church Area',
+    'Korir Hospital Area',
+    'Kwa Mnara',
+    'Old Equity',
+    'Rosama Area',
+    'Shanturi Area',
+    'New Equity Bank Area',
+    'Likizo Resort Area',
+    'Nkadayo',
+    'Full Gospel Area',
+    'Blay Area',
+    'Siro Nosim Area'
+  ],
+  'Loitokitok': [
+    'Town Centre (LTK)',
+    'Kamukunji',
+    'Majengo',
+    'Inkisanjani',
+    'Entonet Route',
+    'Ilitilal Route',
+    'Kandile Area',
+    'Kimana Road Gate',
+    'Hospital Zone',
+    'Police Station Area',
+    'National Oil',
+    'Bondeni',
+    'Kwa Maji',
+    'Custom',
+    'Mountain (Oloitokitok Boys Route)',
+    'Patipati'
+  ]
+};
+
+// Flattened list for legacy support and simple selects
+export const KIMANA_LOCATIONS = LOCATIONS_HIERARCHY['Kimana'];
+export const LOITOKITOK_LOCATIONS = LOCATIONS_HIERARCHY['Loitokitok'];
+export const ALL_AREAS = [...KIMANA_LOCATIONS, ...LOITOKITOK_LOCATIONS];
 
 const mockReviews: Review[] = [
   {
@@ -68,16 +93,16 @@ export const MOCK_LISTINGS: Listing[] = [
   {
     id: '2',
     landlordId: 'l2',
-    title: 'Cozy Airbnb with Kilimanjaro View',
-    description: 'Perfect for weekend getaways. Fully furnished with high-speed WiFi and amazing views of the mountain. Includes a fully equipped kitchenette.',
+    title: 'Loitokitok Viewpoint Airbnb',
+    description: 'Stunning views of Kilimanjaro from the balcony. Located in a high-altitude area of Loitokitok with fresh air and ultimate privacy.',
     unitType: UnitType.AIRBNB,
-    price: 3500,
+    price: 4500,
     deposit: 0,
     pricePeriod: 'nightly',
-    locationName: 'Likizo Resort Area',
-    coordinates: { lat: -2.7250, lng: 37.5300 },
-    distanceFromTown: 3.2,
-    photos: generateMockImages('house3', 8),
+    locationName: 'Hospital Zone',
+    coordinates: { lat: -2.7450, lng: 37.5100 },
+    distanceFromTown: 1.2,
+    photos: generateMockImages('houseLTK', 8),
     isVacant: true,
     landlordName: 'Sarah Kimani',
     landlordPhone: '+254 722 000 111',
@@ -89,7 +114,7 @@ export const MOCK_LISTINGS: Listing[] = [
         userId: 't3',
         userName: 'Peter Maina',
         rating: 5,
-        comment: 'Breathtaking views! The host was very helpful during my stay.',
+        comment: 'Best altitude experience! The weather in Loitokitok is refreshing.',
         date: '2024-03-12'
       }
     ],
@@ -125,8 +150,8 @@ export const MOCK_LISTINGS: Listing[] = [
 
 export const UNLOCK_FEE_STANDARD = 50;
 export const UNLOCK_FEE_AIRBNB = 100;
-export const UNLOCK_FEE_BUSINESS = 100;
+export const UNLOCK_FEE_BUSINESS = 50;
 
 export const LISTING_FEE_STANDARD = 100;
-export const LISTING_FEE_AIRBNB_MONTHLY = 1000;
+export const LISTING_FEE_AIRBNB_MONTHLY = 300;
 export const LISTING_FEE_BUSINESS = 150;

@@ -31,3 +31,27 @@ export async function getEnhancedSearchTerms(query: string) {
     return { keywords: [query] };
   }
 }
+
+/**
+ * Description Refiner:
+ * Polishes a raw property description into a professional and appealing marketing text.
+ */
+export async function refineDescription(description: string) {
+  if (!description || description.length < 10) return description;
+  
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-3-flash-preview',
+      contents: `You are a world-class real estate copywriter in Kenya. Refine the following property description for a listing in Kimana/Loitokitok area. Make it professional, persuasive, and appealing to potential tenants while keeping it honest. 
+      
+      Original draft: "${description}"
+      
+      Provide ONLY the refined text without any introduction or pleasantries.`,
+    });
+    
+    return response.text?.trim() || description;
+  } catch (e) {
+    console.error("Gemini refinement failed:", e);
+    return description;
+  }
+}

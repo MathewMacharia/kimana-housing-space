@@ -1,21 +1,20 @@
+
 import React, { useState } from 'react';
 import { UserRole, User } from '../types';
 import { auth } from '../firebase';
-import {
-  createUserWithEmailAndPassword,
-  signInWithEmailAndPassword,
-  RecaptchaVerifier,
-  signInWithPhoneNumber,
-  ConfirmationResult,
+import { FirebaseService } from '../services/db';
+import { 
+  createUserWithEmailAndPassword, 
+  signInWithEmailAndPassword, 
+  sendPasswordResetEmail,
   updateProfile
 } from 'firebase/auth';
-import { FirebaseService } from '../services/db';
 
 interface AuthFlowProps {
   onAuthenticated: (user: User) => void;
 }
 
-type AuthStep = 'welcome' | 'signup' | 'login' | 'verify-otp' | 'forgot-password';
+type AuthStep = 'welcome' | 'signup' | 'login' | 'forgot-password';
 
 const AuthFlow: React.FC<AuthFlowProps> = ({ onAuthenticated }) => {
   const [step, setStep] = useState<AuthStep>('welcome');
@@ -23,8 +22,6 @@ const AuthFlow: React.FC<AuthFlowProps> = ({ onAuthenticated }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [verificationCode, setVerificationCode] = useState('');
-  const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
 
   // Sign up form data
   const [signupData, setSignupData] = useState({
@@ -37,19 +34,9 @@ const AuthFlow: React.FC<AuthFlowProps> = ({ onAuthenticated }) => {
 
   // Login form data
   const [loginData, setLoginData] = useState({
-    identifier: '', // Phone or Email
+    identifier: '', 
     password: ''
   });
-
-  const setupRecaptcha = () => {
-    if ((window as any).recaptchaVerifier) return (window as any).recaptchaVerifier;
-    const verifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
-      'size': 'invisible',
-      'callback': () => { }
-    });
-    (window as any).recaptchaVerifier = verifier;
-    return verifier;
-  };
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -66,111 +53,91 @@ const AuthFlow: React.FC<AuthFlowProps> = ({ onAuthenticated }) => {
     }
 
     setIsLoading(true);
+    
     try {
+      // 1. Create real Firebase Auth user
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      const firebaseUser = userCredential.user;
+      
+      // 2. Update display name in Auth profile
+      await updateProfile(userCredential.user, { displayName: fullName });
 
-      await updateProfile(firebaseUser, { displayName: fullName });
-
+      // 3. Create Firestore Profile immediately to persist role
       const newUser: User = {
-        id: firebaseUser.uid,
+        id: userCredential.user.uid,
         name: fullName,
-        phone: phone.startsWith('+') ? phone : `+254${phone.replace(/^0+/, '')}`,
+        phone: phone,
         email: email,
-        role: role,
+        role: role, // Persistent choice
         unlockedListings: [],
+        favorites: [],
+        savedSearches: [],
         isEncrypted: true
       };
-
-      console.log("Saving user profile to Firestore for UID:", firebaseUser.uid);
+      
       await FirebaseService.saveUserProfile(newUser);
-      console.log("Profile sync successful");
-      onAuthenticated(newUser);
-    } catch (error: any) {
-      console.error("Signup process failed:", error);
-      alert(error.message || 'Signup failed. Please try again or check your connection.');
-    } finally {
+
       setIsLoading(false);
+      setStep('login');
+      alert(`Account created successfully as a ${role}! Please log in to access your dashboard.`);
+    } catch (error: any) {
+      setIsLoading(false);
+      console.error("Signup failed:", error);
+      alert(`Signup failed: ${error.message}`);
     }
   };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    const { identifier, password } = loginData;
-    if (!identifier || !password) {
+    if (!loginData.identifier || !loginData.password) {
       alert('Please enter your credentials');
       return;
     }
 
     setIsLoading(true);
+    
     try {
-      if (!identifier.includes('@')) {
-        alert('Phone login is temporarily disabled due to billing setup. Please use your email address.');
-        setIsLoading(false);
-        return;
-      }
-
-      const userCredential = await signInWithEmailAndPassword(auth, identifier, password);
-      const profile = await FirebaseService.getUserById(userCredential.user.uid);
-      if (profile) onAuthenticated(profile);
-      else throw new Error("Profile not found");
-    } catch (error: any) {
-      alert(error.message || 'Login failed');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleSendOtp = async () => {
-    const phoneNum = loginData.identifier.startsWith('+') ? loginData.identifier : `+254${loginData.identifier.replace(/^0+/, '')}`;
-    setIsLoading(true);
-    try {
-      const verifier = setupRecaptcha();
-      const result = await signInWithPhoneNumber(auth, phoneNum, verifier);
-      setConfirmationResult(result);
-      setStep('verify-otp');
-    } catch (error: any) {
-      alert(error.message || 'Failed to send OTP');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleVerifyOtp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!confirmationResult || !verificationCode) return;
-
-    setIsLoading(true);
-    try {
-      const userCredential = await confirmationResult.confirm(verificationCode);
-      const firebaseUser = userCredential.user;
-
-      let profile = await FirebaseService.getUserById(firebaseUser.uid);
-      if (!profile) {
-        // If first time login via phone, create a basic profile
-        profile = {
-          id: firebaseUser.uid,
-          name: firebaseUser.displayName || 'Guest User',
-          phone: firebaseUser.phoneNumber || loginData.identifier,
-          email: firebaseUser.email || '',
-          role: role,
+      // 1. Firebase Auth login
+      const userCredential = await signInWithEmailAndPassword(auth, loginData.identifier, loginData.password);
+      
+      // 2. Fetch the actual profile from Firestore to get the real Role
+      const profile = await FirebaseService.getUserByPhone(userCredential.user.email || userCredential.user.uid);
+      
+      if (profile) {
+        onAuthenticated(profile);
+      } else {
+        // Fallback for missing profile
+        const newUser: User = {
+          id: userCredential.user.uid,
+          name: userCredential.user.displayName || "User",
+          phone: "0700000000",
+          email: userCredential.user.email || "",
+          role: role, // Fallback to current UI selection if no DB record found
           unlockedListings: [],
+          favorites: [],
+          savedSearches: [],
           isEncrypted: true
         };
-        await FirebaseService.saveUserProfile(profile);
+        onAuthenticated(newUser);
       }
-      onAuthenticated(profile);
     } catch (error: any) {
-      alert(error.message || 'Verification failed');
-    } finally {
       setIsLoading(false);
+      console.error("Login failed:", error);
+      alert(`Login failed: ${error.message}. Please check your email and password.`);
     }
   };
 
-  const handleForgotPassword = (e: React.FormEvent) => {
+  const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault();
-    alert('Reset link functionality coming soon via Firebase!');
-    setStep('login');
+    const email = prompt("Please enter your email to receive a reset link:");
+    if (!email) return;
+
+    try {
+      await sendPasswordResetEmail(auth, email);
+      alert('Reset link sent to your email.');
+      setStep('login');
+    } catch (error: any) {
+      alert(`Error: ${error.message}`);
+    }
   };
 
   if (step === 'welcome') {
@@ -182,25 +149,25 @@ const AuthFlow: React.FC<AuthFlowProps> = ({ onAuthenticated }) => {
             <i className="fas fa-shield-alt"></i>
           </div>
         </div>
-        <h1 className="text-3xl font-black text-slate-900 mb-2 tracking-tight">Kimana Space</h1>
+        <h1 className="text-3xl font-black text-slate-900 mb-2 tracking-tight">Masqani Poa</h1>
         <p className="text-slate-500 mb-8 max-w-xs text-sm font-medium">Connecting landlords and tenants with <span className="text-blue-600 font-bold">Secure Marketplace</span> technology.</p>
-
+        
         <div className="space-y-4 w-full max-w-xs">
-          <button
+          <button 
             onClick={() => { setRole(UserRole.TENANT); setStep('signup'); }}
             className="w-full py-4 bg-blue-600 text-white font-bold rounded-2xl shadow-lg active:scale-95 transition-transform flex items-center justify-center gap-3 text-sm uppercase tracking-widest"
           >
             <i className="fas fa-user"></i> Join as Tenant
           </button>
-          <button
+          <button 
             onClick={() => { setRole(UserRole.LANDLORD); setStep('signup'); }}
             className="w-full py-4 border-2 border-slate-100 text-slate-700 font-bold rounded-2xl active:scale-95 transition-transform flex items-center justify-center gap-3 text-sm uppercase tracking-widest"
           >
             <i className="fas fa-user-tie"></i> Join as Landlord
           </button>
-
+          
           <div className="pt-4">
-            <button
+            <button 
               onClick={() => setStep('login')}
               className="text-blue-600 font-black text-[10px] uppercase tracking-widest"
             >
@@ -219,45 +186,50 @@ const AuthFlow: React.FC<AuthFlowProps> = ({ onAuthenticated }) => {
         <div className="space-y-1 mb-8">
           <h2 className="text-3xl font-black text-slate-900 tracking-tight">{role === UserRole.TENANT ? 'Tenant' : 'Landlord'} Sign Up</h2>
           <p className="text-xs text-slate-400 font-bold uppercase tracking-widest">Create a secure housing account</p>
+          {role === UserRole.LANDLORD && (
+             <div className="mt-2 inline-flex items-center gap-2 px-3 py-1 bg-amber-50 border border-amber-100 rounded-full text-[9px] font-black text-amber-600 uppercase tracking-widest">
+               <i className="fas fa-certificate"></i> Agency Privileges Enabled
+             </div>
+          )}
         </div>
 
         <form onSubmit={handleSignup} className="space-y-4">
           <div className="space-y-1">
             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Full Name (Two Names)</label>
-            <input
+            <input 
               required
-              type="text"
+              type="text" 
               placeholder="e.g. John Mweru"
               className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none font-bold text-sm"
               value={signupData.fullName}
-              onChange={e => setSignupData({ ...signupData, fullName: e.target.value })}
+              onChange={e => setSignupData({...signupData, fullName: e.target.value})}
             />
           </div>
-
+          
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1">
               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Phone Number</label>
               <div className="relative">
                 <span className="absolute left-4 top-1/2 -translate-y-1/2 font-bold text-slate-400">+254</span>
-                <input
+                <input 
                   required
-                  type="tel"
+                  type="tel" 
                   placeholder="712345678"
                   className="w-full pl-16 pr-4 py-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none font-bold text-sm"
                   value={signupData.phone}
-                  onChange={e => setSignupData({ ...signupData, phone: e.target.value })}
+                  onChange={e => setSignupData({...signupData, phone: e.target.value})}
                 />
               </div>
             </div>
             <div className="space-y-1">
               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Email Address</label>
-              <input
+              <input 
                 required
-                type="email"
+                type="email" 
                 placeholder="name@example.com"
                 className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none font-bold text-sm"
                 value={signupData.email}
-                onChange={e => setSignupData({ ...signupData, email: e.target.value })}
+                onChange={e => setSignupData({...signupData, email: e.target.value})}
               />
             </div>
           </div>
@@ -265,15 +237,15 @@ const AuthFlow: React.FC<AuthFlowProps> = ({ onAuthenticated }) => {
           <div className="space-y-1">
             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Secure Password</label>
             <div className="relative">
-              <input
+              <input 
                 required
                 type={showPassword ? "text" : "password"}
                 placeholder="••••••••"
                 className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none font-bold text-sm"
                 value={signupData.password}
-                onChange={e => setSignupData({ ...signupData, password: e.target.value })}
+                onChange={e => setSignupData({...signupData, password: e.target.value})}
               />
-              <button
+              <button 
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
                 className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400"
@@ -286,15 +258,15 @@ const AuthFlow: React.FC<AuthFlowProps> = ({ onAuthenticated }) => {
           <div className="space-y-1">
             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Confirm Password</label>
             <div className="relative">
-              <input
+              <input 
                 required
                 type={showConfirmPassword ? "text" : "password"}
                 placeholder="••••••••"
                 className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none font-bold text-sm"
                 value={signupData.confirmPassword}
-                onChange={e => setSignupData({ ...signupData, confirmPassword: e.target.value })}
+                onChange={e => setSignupData({...signupData, confirmPassword: e.target.value})}
               />
-              <button
+              <button 
                 type="button"
                 onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                 className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400"
@@ -304,16 +276,16 @@ const AuthFlow: React.FC<AuthFlowProps> = ({ onAuthenticated }) => {
             </div>
           </div>
 
-          <button
+          <button 
             type="submit"
             disabled={isLoading}
             className="w-full py-5 bg-blue-600 text-white font-black rounded-2xl shadow-xl active:scale-95 transition-all flex items-center justify-center gap-2 uppercase text-xs tracking-widest mt-4"
           >
-            {isLoading ? <i className="fas fa-circle-notch animate-spin"></i> : 'Create Account'}
+            {isLoading ? <i className="fas fa-circle-notch animate-spin"></i> : `Join as ${role}`}
           </button>
-
+          
           <div className="text-center pt-4">
-            <button
+            <button 
               type="button"
               onClick={() => setStep('login')}
               className="text-slate-400 font-bold text-[10px] uppercase tracking-widest"
@@ -330,48 +302,47 @@ const AuthFlow: React.FC<AuthFlowProps> = ({ onAuthenticated }) => {
     return (
       <div className="min-h-screen bg-white p-6 animate-in slide-in-from-left duration-500 flex flex-col justify-center">
         <button onClick={() => setStep('welcome')} className="absolute top-6 left-6 text-slate-400 p-2 active:scale-90 transition-transform"><i className="fas fa-arrow-left text-xl"></i></button>
-
+        
         <div className="max-w-sm w-full mx-auto space-y-8">
           <div className="space-y-1">
             <h2 className="text-3xl font-black text-slate-900 tracking-tight">Welcome Back</h2>
-            <p className="text-xs text-slate-400 font-bold uppercase tracking-widest">Secure access to Kimana Space</p>
+            <p className="text-xs text-slate-400 font-bold uppercase tracking-widest">Secure access to Masqani Poa</p>
           </div>
 
           <form onSubmit={handleLogin} className="space-y-5">
-            <div id="recaptcha-container"></div>
             <div className="space-y-1">
               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Email Address</label>
-              <input
+              <input 
                 required
-                type="email"
-                placeholder="user@email.com"
+                type="email" 
+                placeholder="name@email.com"
                 className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none font-bold text-sm"
                 value={loginData.identifier}
-                onChange={e => setLoginData({ ...loginData, identifier: e.target.value })}
+                onChange={e => setLoginData({...loginData, identifier: e.target.value})}
               />
             </div>
 
             <div className="space-y-1">
               <div className="flex justify-between items-center px-1">
                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Password</label>
-                <button
+                <button 
                   type="button"
-                  onClick={() => setStep('forgot-password')}
+                  onClick={handleForgotPassword}
                   className="text-[10px] font-black text-blue-600 uppercase tracking-widest"
                 >
                   Forgot Password?
                 </button>
               </div>
               <div className="relative">
-                <input
+                <input 
                   required
                   type={showPassword ? "text" : "password"}
                   placeholder="••••••••"
                   className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none font-bold text-sm"
                   value={loginData.password}
-                  onChange={e => setLoginData({ ...loginData, password: e.target.value })}
+                  onChange={e => setLoginData({...loginData, password: e.target.value})}
                 />
-                <button
+                <button 
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400"
@@ -381,16 +352,16 @@ const AuthFlow: React.FC<AuthFlowProps> = ({ onAuthenticated }) => {
               </div>
             </div>
 
-            <button
+            <button 
               type="submit"
               disabled={isLoading}
               className="w-full py-5 bg-blue-600 text-white font-black rounded-2xl shadow-xl active:scale-95 transition-all flex items-center justify-center gap-2 uppercase text-xs tracking-widest mt-4"
             >
               {isLoading ? <i className="fas fa-circle-notch animate-spin"></i> : 'Secure Login'}
             </button>
-
+            
             <div className="text-center pt-2">
-              <button
+              <button 
                 type="button"
                 onClick={() => setStep('signup')}
                 className="text-slate-400 font-bold text-[10px] uppercase tracking-widest"
@@ -398,90 +369,6 @@ const AuthFlow: React.FC<AuthFlowProps> = ({ onAuthenticated }) => {
                 No account yet? <span className="text-blue-600">Register Now</span>
               </button>
             </div>
-          </form>
-        </div>
-      </div>
-    );
-  }
-
-  if (step === 'verify-otp') {
-    return (
-      <div className="min-h-screen bg-white p-6 animate-in slide-in-from-right duration-500 flex flex-col justify-center">
-        <div className="max-w-sm w-full mx-auto space-y-8">
-          <div className="text-center">
-            <h2 className="text-3xl font-black text-slate-900 tracking-tight">Verify Identity</h2>
-            <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-2">Enter the 6-digit code sent to your phone</p>
-          </div>
-
-          <form onSubmit={handleVerifyOtp} className="space-y-5">
-            <input
-              required
-              type="text"
-              maxLength={6}
-              placeholder="123456"
-              className="w-full p-5 bg-slate-50 border border-slate-100 rounded-3xl text-center text-2xl font-black tracking-[0.5em] outline-none focus:ring-2 focus:ring-blue-500"
-              value={verificationCode}
-              onChange={e => setVerificationCode(e.target.value)}
-            />
-
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="w-full py-5 bg-blue-600 text-white font-black rounded-2xl shadow-xl active:scale-95 transition-all flex items-center justify-center gap-2 uppercase text-xs tracking-widest"
-            >
-              {isLoading ? <i className="fas fa-circle-notch animate-spin"></i> : 'Verify & Continue'}
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setStep('login')}
-              className="w-full text-slate-400 font-bold text-[10px] uppercase tracking-widest"
-            >
-              Change Phone Number
-            </button>
-          </form>
-        </div>
-      </div>
-    );
-  }
-
-  if (step === 'forgot-password') {
-    return (
-      <div className="min-h-screen bg-white p-6 animate-in zoom-in duration-500 flex flex-col justify-center">
-        <div className="max-w-sm w-full mx-auto space-y-8">
-          <div className="text-center">
-            <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center text-2xl mx-auto mb-4 shadow-inner">
-              <i className="fas fa-key"></i>
-            </div>
-            <h2 className="text-2xl font-black text-slate-900 tracking-tight">Reset Password</h2>
-            <p className="text-xs text-slate-500 font-medium px-4">Enter your registered email or phone number to receive a reset link.</p>
-          </div>
-
-          <form onSubmit={handleForgotPassword} className="space-y-6">
-            <div className="space-y-1">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Phone or Email</label>
-              <input
-                required
-                type="text"
-                placeholder="e.g. 0712345678"
-                className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none font-bold text-sm"
-              />
-            </div>
-
-            <button
-              type="submit"
-              className="w-full py-5 bg-blue-600 text-white font-black rounded-2xl shadow-xl active:scale-95 transition-all flex items-center justify-center gap-2 uppercase text-xs tracking-widest"
-            >
-              Send Reset Link
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setStep('login')}
-              className="w-full text-slate-400 font-black text-[10px] uppercase tracking-widest"
-            >
-              Back to Login
-            </button>
           </form>
         </div>
       </div>

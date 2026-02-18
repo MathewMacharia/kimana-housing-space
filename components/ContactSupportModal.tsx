@@ -7,7 +7,7 @@ interface ContactSupportModalProps {
 
 const ContactSupportModal: React.FC<ContactSupportModalProps> = ({ onClose }) => {
   const supportPhone = "+254700000000";
-  const supportEmail = "support@kimana-housing.com";
+  const supportEmail = "support@masqani-poa.com";
 
   return (
     <div className="fixed inset-0 z-[100] flex items-end justify-center animate-in fade-in duration-300">
@@ -43,7 +43,7 @@ const ContactSupportModal: React.FC<ContactSupportModalProps> = ({ onClose }) =>
           </a>
 
           <a 
-            href={`sms:${supportPhone}?body=Hello Kimana Support, I need help with...`}
+            href={`sms:${supportPhone}?body=Hello Masqani Support, I need help with...`}
             className="flex items-center gap-4 p-5 bg-slate-50 rounded-2xl border border-slate-100 active:scale-95 transition-all group"
           >
             <div className="w-12 h-12 bg-blue-100 text-blue-600 rounded-xl flex items-center justify-center text-lg group-hover:bg-blue-600 group-hover:text-white transition-colors">
@@ -57,7 +57,7 @@ const ContactSupportModal: React.FC<ContactSupportModalProps> = ({ onClose }) =>
           </a>
 
           <a 
-            href={`mailto:${supportEmail}?subject=Support Request - Kimana Housing`}
+            href={`mailto:${supportEmail}?subject=Support Request - Masqani Poa`}
             className="flex items-center gap-4 p-5 bg-slate-50 rounded-2xl border border-slate-100 active:scale-95 transition-all group"
           >
             <div className="w-12 h-12 bg-amber-100 text-amber-600 rounded-xl flex items-center justify-center text-lg group-hover:bg-amber-600 group-hover:text-white transition-colors">
