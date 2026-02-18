@@ -1,13 +1,13 @@
 
-import { 
-  collection, 
-  doc, 
-  getDoc, 
-  getDocs, 
-  setDoc, 
-  updateDoc, 
+import {
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  setDoc,
+  updateDoc,
   addDoc,
-  Timestamp 
+  Timestamp
 } from "firebase/firestore";
 import { ref, uploadString, getDownloadURL } from "firebase/storage";
 import { db, storage, auth } from "../firebase";
@@ -19,7 +19,7 @@ export const FirebaseService = {
     try {
       if (!db || !auth.currentUser) return;
       // Use email or UID as document ID for security rules compatibility
-      const userRef = doc(db, "users", user.email || user.id); 
+      const userRef = doc(db, "users", user.email || user.id);
       await setDoc(userRef, {
         ...user,
         updatedAt: Timestamp.now()
@@ -52,11 +52,11 @@ export const FirebaseService = {
     try {
       if (!db) return [];
       const listingsRef = collection(db, "listings");
-      
+
       // Attempt to fetch from cloud
       const querySnapshot = await getDocs(listingsRef);
       const allListings = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Listing));
-      
+
       // Filter for verified listings on client side
       return allListings.filter(l => l.isVerified === true);
     } catch (e: any) {
@@ -99,12 +99,19 @@ export const FirebaseService = {
   },
 
   // Image Storage
-  async uploadPropertyImage(path: string, base64Data: string): Promise<string> {
+  async uploadPropertyImage(path: string, file: File | string): Promise<string> {
     try {
       if (!storage || !auth.currentUser) throw new Error("Storage requires an active session");
       const storageRef = ref(storage, path);
-      const cleanData = base64Data.includes(",") ? base64Data.split(",")[1] : base64Data;
-      await uploadString(storageRef, cleanData, 'base64');
+
+      if (typeof file === 'string') {
+        const cleanData = file.includes(",") ? file.split(",")[1] : file;
+        await uploadString(storageRef, cleanData, 'base64');
+      } else {
+        const { uploadBytes } = await import("firebase/storage");
+        await uploadBytes(storageRef, file);
+      }
+
       return await getDownloadURL(storageRef);
     } catch (e) {
       console.error("Firebase Storage upload failed:", e);
