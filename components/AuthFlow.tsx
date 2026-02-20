@@ -152,25 +152,32 @@ const AuthFlow: React.FC<AuthFlowProps> = ({ onAuthenticated }) => {
       let profile = await FirebaseService.getUserProfile(result.user.email || result.user.uid);
 
       if (profile) {
+        console.log("Existing profile restored for:", profile.email, "as", profile.role);
         onAuthenticated(profile);
       } else {
-        // Create basic profile for first-time Google users
+        const userEmail = result.user.email || "";
+        console.log("No existing profile found. Creating new profile for:", userEmail, "as", role);
+
+        // Create basic profile for first-time Google users using the SELECTED role
         const newUser: User = {
           id: result.user.uid,
           name: result.user.displayName || "User",
-          phone: "", // Google doesn't always provide phone
-          email: result.user.email || "",
-          role: role, // Use the role selected on the welcome/login screen
+          phone: result.user.phoneNumber || "", // Google might provide this
+          email: userEmail,
+          role: role, // This is the role selected via the UI toggle
           unlockedListings: [],
           favorites: [],
           savedSearches: [],
           isEncrypted: true
         };
+
+        // Save to the appropriate collection (landlords or tenants)
         await FirebaseService.saveUserProfile(newUser);
         profile = newUser;
-      }
 
-      onAuthenticated(profile);
+        alert(`Successfully signed in as a ${role}. Your profile has been created using your Google account: ${userEmail}`);
+        onAuthenticated(profile);
+      }
     } catch (error: any) {
       setIsLoading(false);
       console.error("Google login failed with error code:", error.code);
