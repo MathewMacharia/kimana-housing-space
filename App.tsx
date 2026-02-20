@@ -70,10 +70,10 @@ const App: React.FC = () => {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
-        const profile = await FirebaseService.getUserByPhone(firebaseUser.email || firebaseUser.uid);
+        const profile = await FirebaseService.getUserProfile(firebaseUser.email || firebaseUser.uid);
         if (profile) {
-          setCurrentUser({ 
-            ...profile, 
+          setCurrentUser({
+            ...profile,
             favorites: profile.favorites || [],
             savedSearches: profile.savedSearches || []
           });
@@ -105,9 +105,9 @@ const App: React.FC = () => {
   }, [currentUser, isAuthChecking, loadData]);
 
   const filteredListings = listings.filter(l => {
-    const matchesSearch = l.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                          l.locationName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          l.unitType.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesSearch = l.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      l.locationName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      l.unitType.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesType = filterType === 'All' || l.unitType === filterType;
     return matchesSearch && matchesType;
   });
@@ -130,7 +130,7 @@ const App: React.FC = () => {
       setSelectedListing(updatedListing);
       try {
         await FirebaseService.updateListing(selectedListing.id, { reviews: updatedListing.reviews });
-      } catch (error) {}
+      } catch (error) { }
     }
   };
 
@@ -172,8 +172,8 @@ const App: React.FC = () => {
             <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
               {searchQuery ? `Filtering by "${searchQuery}"` : `${filterType} Units`}
             </h3>
-            <button 
-              onClick={() => {setSearchQuery(''); setFilterType('All');}} 
+            <button
+              onClick={() => { setSearchQuery(''); setFilterType('All'); }}
               className="text-[10px] font-black text-blue-600 uppercase tracking-widest"
             >
               Clear All
@@ -245,7 +245,7 @@ const App: React.FC = () => {
       return (
         <div className="space-y-6 animate-in slide-in-from-right duration-500">
           <div className="flex items-center gap-4 mb-2">
-            <button 
+            <button
               onClick={() => setExploringTown(null)}
               className="w-10 h-10 rounded-full bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-400 active:scale-90 transition-transform shadow-sm"
             >
@@ -256,10 +256,10 @@ const App: React.FC = () => {
               <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">Select sub-neighborhood</p>
             </div>
           </div>
-          
+
           <div className="grid grid-cols-1 gap-2">
             {townAreas.map(area => (
-              <button 
+              <button
                 key={area}
                 onClick={() => handleSelectExploreArea(area)}
                 className="w-full p-5 bg-white dark:bg-slate-900 rounded-3xl border border-slate-100 dark:border-slate-800 flex items-center justify-between active:scale-[0.98] transition-all shadow-sm group"
@@ -284,9 +284,9 @@ const App: React.FC = () => {
           <h2 className="text-2xl font-black text-slate-800 dark:text-slate-100 tracking-tight">Market Regions</h2>
           <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">Select target town to begin</p>
         </div>
-        
+
         <div className="grid grid-cols-1 gap-4">
-          <button 
+          <button
             onClick={() => setExploringTown('Kimana')}
             className="relative overflow-hidden group h-40 rounded-[2.5rem] bg-blue-600 shadow-xl shadow-blue-100 dark:shadow-none active:scale-95 transition-all text-left"
           >
@@ -302,7 +302,7 @@ const App: React.FC = () => {
             </div>
           </button>
 
-          <button 
+          <button
             onClick={() => setExploringTown('Loitokitok')}
             className="relative overflow-hidden group h-40 rounded-[2.5rem] bg-slate-800 shadow-xl shadow-slate-200 dark:shadow-none active:scale-95 transition-all text-left"
           >
@@ -325,9 +325,9 @@ const App: React.FC = () => {
   const renderMainContent = () => {
     if (activeTab === 'profile') {
       return (
-        <Settings 
-          currentUser={currentUser} 
-          onLogout={handleLogout} 
+        <Settings
+          currentUser={currentUser}
+          onLogout={handleLogout}
           onUpdateUser={setCurrentUser}
           isDarkMode={isDarkMode}
           setIsDarkMode={setIsDarkMode}
@@ -344,17 +344,17 @@ const App: React.FC = () => {
 
     if (currentUser.role === UserRole.LANDLORD) {
       return (
-        <LandlordDashboard 
-          listings={listings} 
+        <LandlordDashboard
+          listings={listings}
           onUpdateListing={async (l) => {
-             // Handle state update locally
-             setListings(prev => prev.map(x => x.id === l.id ? l : x));
-             // Handle persistence
-             try {
-               await FirebaseService.updateListing(l.id, l);
-             } catch (e) {
-               console.error("Failed to update listing on firestore", e);
-             }
+            // Handle state update locally
+            setListings(prev => prev.map(x => x.id === l.id ? l : x));
+            // Handle persistence
+            try {
+              await FirebaseService.updateListing(l.id, l);
+            } catch (e) {
+              console.error("Failed to update listing on firestore", e);
+            }
           }}
           onCreateListing={async (l) => {
             const id = await FirebaseService.createListing(l);
@@ -373,9 +373,9 @@ const App: React.FC = () => {
 
     if (selectedListing) {
       return (
-        <ListingDetail 
-          listing={selectedListing} 
-          onBack={() => setSelectedListing(null)} 
+        <ListingDetail
+          listing={selectedListing}
+          onBack={() => setSelectedListing(null)}
           onUnlock={() => setIsPaymentModalOpen(true)}
           isUnlocked={currentUser.unlockedListings.includes(selectedListing.id)}
           currentUser={currentUser}
@@ -389,9 +389,9 @@ const App: React.FC = () => {
         <div className="space-y-3">
           <div className="relative">
             <i className="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
-            <input 
-              type="text" 
-              placeholder={t('searchPlaceholder')} 
+            <input
+              type="text"
+              placeholder={t('searchPlaceholder')}
               className="w-full pl-11 pr-4 py-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl outline-none shadow-sm dark:text-white font-medium"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -404,8 +404,8 @@ const App: React.FC = () => {
     );
   };
 
-  const unlockFee = selectedListing?.unitType === UnitType.AIRBNB ? UNLOCK_FEE_AIRBNB : 
-                  (selectedListing?.unitType === UnitType.BUSINESS_HOUSE ? UNLOCK_FEE_BUSINESS : UNLOCK_FEE_STANDARD);
+  const unlockFee = selectedListing?.unitType === UnitType.AIRBNB ? UNLOCK_FEE_AIRBNB :
+    (selectedListing?.unitType === UnitType.BUSINESS_HOUSE ? UNLOCK_FEE_BUSINESS : UNLOCK_FEE_STANDARD);
 
   return (
     <div className="min-h-screen pb-24 bg-slate-50 dark:bg-slate-950 transition-colors">
@@ -416,8 +416,8 @@ const App: React.FC = () => {
           </div>
           <h1 className="text-sm font-black text-slate-800 dark:text-slate-100 uppercase tracking-tight">Masqani Poa</h1>
         </div>
-        <button onClick={() => {setActiveTab('profile'); setSelectedListing(null);}} className="w-9 h-9 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 dark:text-slate-400 active:scale-90 overflow-hidden">
-           {currentUser.name ? <span className="text-[10px] font-black">{currentUser.name.substring(0,1)}</span> : <i className="fas fa-user-circle"></i>}
+        <button onClick={() => { setActiveTab('profile'); setSelectedListing(null); }} className="w-9 h-9 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 dark:text-slate-400 active:scale-90 overflow-hidden">
+          {currentUser.name ? <span className="text-[10px] font-black">{currentUser.name.substring(0, 1)}</span> : <i className="fas fa-user-circle"></i>}
         </button>
       </header>
 
@@ -426,27 +426,27 @@ const App: React.FC = () => {
       </main>
 
       <nav className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur px-8 py-3 flex justify-around items-center border-t border-slate-100 dark:border-slate-800 safe-area-inset-bottom">
-        <button onClick={() => {setActiveTab('home'); setSelectedListing(null);}} className={`flex flex-col items-center gap-1 ${activeTab === 'home' ? 'text-blue-600' : 'text-slate-400'}`}>
+        <button onClick={() => { setActiveTab('home'); setSelectedListing(null); }} className={`flex flex-col items-center gap-1 ${activeTab === 'home' ? 'text-blue-600' : 'text-slate-400'}`}>
           <i className="fas fa-home text-lg"></i>
           <span className="text-[9px] font-black uppercase tracking-tighter">{t('market')}</span>
         </button>
-        <button onClick={() => {setActiveTab('search'); setSelectedListing(null);}} className={`flex flex-col items-center gap-1 ${activeTab === 'search' ? 'text-blue-600' : 'text-slate-400'}`}>
+        <button onClick={() => { setActiveTab('search'); setSelectedListing(null); }} className={`flex flex-col items-center gap-1 ${activeTab === 'search' ? 'text-blue-600' : 'text-slate-400'}`}>
           <i className="fas fa-map-marked-alt text-lg"></i>
           <span className="text-[9px] font-black uppercase tracking-tighter">{t('explore')}</span>
         </button>
-        <button onClick={() => {setActiveTab('listings'); setSelectedListing(null);}} className={`flex flex-col items-center gap-1 ${activeTab === 'listings' ? 'text-blue-600' : 'text-slate-400'}`}>
+        <button onClick={() => { setActiveTab('listings'); setSelectedListing(null); }} className={`flex flex-col items-center gap-1 ${activeTab === 'listings' ? 'text-blue-600' : 'text-slate-400'}`}>
           <i className="fas fa-heart text-lg"></i>
           <span className="text-[9px] font-black uppercase tracking-tighter">{t('saved')}</span>
         </button>
-        <button onClick={() => {setActiveTab('profile'); setSelectedListing(null);}} className={`flex flex-col items-center gap-1 ${activeTab === 'profile' ? 'text-blue-600' : 'text-slate-400'}`}>
+        <button onClick={() => { setActiveTab('profile'); setSelectedListing(null); }} className={`flex flex-col items-center gap-1 ${activeTab === 'profile' ? 'text-blue-600' : 'text-slate-400'}`}>
           <i className="fas fa-cog text-lg"></i>
           <span className="text-[9px] font-black uppercase tracking-tighter">{t('account')}</span>
         </button>
       </nav>
 
       {isPaymentModalOpen && (
-        <PaymentModal 
-          onClose={() => setIsPaymentModalOpen(false)} 
+        <PaymentModal
+          onClose={() => setIsPaymentModalOpen(false)}
           onSuccess={() => {
             if (currentUser && selectedListing) {
               FirebaseService.unlockListingForUser(currentUser.email, selectedListing.id).then(() => {

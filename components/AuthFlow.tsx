@@ -101,7 +101,7 @@ const AuthFlow: React.FC<AuthFlowProps> = ({ onAuthenticated }) => {
       const userCredential = await signInWithEmailAndPassword(auth, loginData.identifier, loginData.password);
 
       // 2. Fetch the actual profile from Firestore to get the real Role
-      const profile = await FirebaseService.getUserByPhone(userCredential.user.email || userCredential.user.uid);
+      const profile = await FirebaseService.getUserProfile(userCredential.user.email || userCredential.user.uid);
 
       if (profile) {
         onAuthenticated(profile);
@@ -148,11 +148,12 @@ const AuthFlow: React.FC<AuthFlowProps> = ({ onAuthenticated }) => {
       const result = await signInWithPopup(auth, googleProvider);
       console.log("Google Sign-In successful:", result.user.email);
 
-      // Try to find user by email first, then by UID
-      let profile = await FirebaseService.getUserByPhone(result.user.email || result.user.uid);
+      // Try to find user profile in any collection
+      let profile = await FirebaseService.getUserProfile(result.user.email || result.user.uid);
 
-      if (!profile) {
-        console.log("No existing profile found. Creating new profile for:", result.user.email);
+      if (profile) {
+        onAuthenticated(profile);
+      } else {
         // Create basic profile for first-time Google users
         const newUser: User = {
           id: result.user.uid,

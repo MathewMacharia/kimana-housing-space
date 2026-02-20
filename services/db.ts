@@ -11,38 +11,48 @@ import {
 } from "firebase/firestore";
 import { ref, uploadString, getDownloadURL } from "firebase/storage";
 import { db, storage, auth } from "../firebase";
-import { User, Listing } from "../types";
+import { User, Listing, UserRole } from "../types";
 
 export const FirebaseService = {
   // User Profile Management
   async saveUserProfile(user: User): Promise<void> {
     try {
       if (!db || !auth.currentUser) return;
-      // Use email or UID as document ID for security rules compatibility
-      const userRef = doc(db, "users", user.email || user.id);
+      // Separate collections for Landlords and Tenants
+      const collectionName = user.role === UserRole.LANDLORD ? "landlords" : "tenants";
+      const userRef = doc(db, collectionName, user.email || user.id);
+
       await setDoc(userRef, {
         ...user,
         updatedAt: Timestamp.now()
       }, { merge: true });
     } catch (e: any) {
-      if (e.code === 'permission-denied') {
-        console.warn("Firestore profile sync ignored: Missing permissions. User likely not signed in.");
-      } else {
-        console.error("Firestore saveUserProfile failed:", e);
-      }
+      console.error("Firestore saveUserProfile failed:", e);
     }
   },
 
-  async getUserByPhone(identifier: string): Promise<User | null> {
+  async getUserProfile(identifier: string): Promise<User | null> {
     try {
       if (!db || !auth.currentUser) return null;
-      const userRef = doc(db, "users", identifier);
-      const userSnap = await getDoc(userRef);
-      return userSnap.exists() ? (userSnap.data() as User) : null;
+
+      // Check Landlords first
+      const landlordRef = doc(db, "landlords", identifier);
+      const landlordSnap = await getDoc(landlordRef);
+      if (landlordSnap.exists()) return landlordSnap.data() as User;
+
+      // Check Tenants second
+      const tenantRef = doc(db, "tenants", identifier);
+      const tenantSnap = await getDoc(tenantRef);
+      if (tenantSnap.exists()) return tenantSnap.data() as User;
+
+      // Legacy check (optional, for transition)
+      const legacyRef = doc(db, "users", identifier);
+      const legacySnap = await getDoc(legacyRef);
+      if (legacySnap.exists()) return legacySnap.data() as User;
+
+      return null;
     } catch (e: any) {
-      if (e.code === 'permission-denied') {
-        console.warn("Firestore read denied: Missing permissions. Use Auth session first.");
-      }
+      console.error("Firestore getUserProfile failed:", e);
       return null;
     }
   },
@@ -123,7 +133,8 @@ export const FirebaseService = {
   async unlockListingForUser(identifier: string, listingId: string): Promise<void> {
     try {
       if (!db || !auth.currentUser) return;
-      const userRef = doc(db, "users", identifier);
+      // Unlocks are currently only relevant for Tenants
+      const userRef = doc(db, "tenants", identifier);
       const userSnap = await getDoc(userRef);
       if (userSnap.exists()) {
         const userData = userSnap.data() as User;
