@@ -26,8 +26,9 @@ export const FirebaseService = {
         ...user,
         updatedAt: Timestamp.now()
       }, { merge: true });
+      console.log(`✅ Profile successfully saved to "${collectionName}" collection for:`, user.email);
     } catch (e: any) {
-      console.error("Firestore saveUserProfile failed:", e);
+      console.error("❌ Firestore saveUserProfile failed:", e);
     }
   },
 

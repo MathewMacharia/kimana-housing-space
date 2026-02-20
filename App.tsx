@@ -78,10 +78,9 @@ const App: React.FC = () => {
             savedSearches: profile.savedSearches || []
           });
         } else {
-          // If no profile found in either landlords or tenants collection, 
-          // we force them back to AuthFlow to complete registration or selection
+          // If no profile found yet, don't sign out automatically.
+          // This prevents a race condition where signup hasn't finished saving the profile.
           setCurrentUser(null);
-          auth.signOut();
         }
       } else {
         setCurrentUser(null);
