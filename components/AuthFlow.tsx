@@ -143,32 +143,45 @@ const AuthFlow: React.FC<AuthFlowProps> = ({ onAuthenticated }) => {
 
   const handleGoogleLogin = async () => {
     setIsLoading(true);
+    console.log("Initiating Google Sign-In popup...");
     try {
       const result = await signInWithPopup(auth, googleProvider);
-      const profile = await FirebaseService.getUserByPhone(result.user.email || result.user.uid);
+      console.log("Google Sign-In successful:", result.user.email);
 
-      if (profile) {
-        onAuthenticated(profile);
-      } else {
+      // Try to find user by email first, then by UID
+      let profile = await FirebaseService.getUserByPhone(result.user.email || result.user.uid);
+
+      if (!profile) {
+        console.log("No existing profile found. Creating new profile for:", result.user.email);
         // Create basic profile for first-time Google users
         const newUser: User = {
           id: result.user.uid,
           name: result.user.displayName || "User",
-          phone: "",
+          phone: "", // Google doesn't always provide phone
           email: result.user.email || "",
-          role: UserRole.TENANT, // Default for social login
+          role: UserRole.TENANT,
           unlockedListings: [],
           favorites: [],
           savedSearches: [],
           isEncrypted: true
         };
         await FirebaseService.saveUserProfile(newUser);
-        onAuthenticated(newUser);
+        profile = newUser;
       }
+
+      onAuthenticated(profile);
     } catch (error: any) {
       setIsLoading(false);
-      console.error("Google login failed:", error);
-      alert(`Google Sign-In failed: ${error.message}`);
+      console.error("Google login failed with error code:", error.code);
+      console.error("Full error object:", error);
+
+      if (error.code === 'auth/popup-closed-by-user') {
+        console.warn("User closed the popup before finishing.");
+      } else if (error.code === 'auth/unauthorized-domain') {
+        alert("CRITICAL: This domain is not authorized in Firebase. Please add 'kimana-housing-space.vercel.app' to Authorized Domains in Firebase Console.");
+      } else {
+        alert(`Google Sign-In failed: ${error.message} (${error.code})`);
+      }
     }
   };
 
