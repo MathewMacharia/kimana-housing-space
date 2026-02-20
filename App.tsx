@@ -78,17 +78,10 @@ const App: React.FC = () => {
             savedSearches: profile.savedSearches || []
           });
         } else {
-          setCurrentUser({
-            id: firebaseUser.uid,
-            name: firebaseUser.displayName || "User",
-            email: firebaseUser.email || "",
-            phone: "",
-            role: UserRole.TENANT,
-            unlockedListings: [],
-            favorites: [],
-            savedSearches: [],
-            isEncrypted: true
-          });
+          // If no profile found in either landlords or tenants collection, 
+          // we force them back to AuthFlow to complete registration or selection
+          setCurrentUser(null);
+          auth.signOut();
         }
       } else {
         setCurrentUser(null);

@@ -45,11 +45,6 @@ export const FirebaseService = {
       const tenantSnap = await getDoc(tenantRef);
       if (tenantSnap.exists()) return tenantSnap.data() as User;
 
-      // Legacy check (optional, for transition)
-      const legacyRef = doc(db, "users", identifier);
-      const legacySnap = await getDoc(legacyRef);
-      if (legacySnap.exists()) return legacySnap.data() as User;
-
       return null;
     } catch (e: any) {
       console.error("Firestore getUserProfile failed:", e);

@@ -160,7 +160,7 @@ const AuthFlow: React.FC<AuthFlowProps> = ({ onAuthenticated }) => {
           name: result.user.displayName || "User",
           phone: "", // Google doesn't always provide phone
           email: result.user.email || "",
-          role: UserRole.TENANT,
+          role: role, // Use the role selected on the welcome/login screen
           unlockedListings: [],
           favorites: [],
           savedSearches: [],
@@ -351,8 +351,30 @@ const AuthFlow: React.FC<AuthFlowProps> = ({ onAuthenticated }) => {
 
         <div className="max-w-sm w-full mx-auto space-y-8">
           <div className="space-y-1">
-            <h2 className="text-3xl font-black text-slate-900 tracking-tight">Welcome Back</h2>
-            <p className="text-xs text-slate-400 font-bold uppercase tracking-widest">Secure access to Masqani Poa</p>
+            <h2 className="text-3xl font-black text-slate-900 tracking-tight">
+              {role === UserRole.LANDLORD ? 'Landlord Portal' : 'Tenant Portal'}
+            </h2>
+            <p className="text-xs text-slate-400 font-bold uppercase tracking-widest flex items-center gap-2">
+              {role === UserRole.LANDLORD ? <><i className="fas fa-user-tie text-blue-600"></i> Secure Landlord Access</> : <><i className="fas fa-user text-blue-600"></i> Secure Tenant Access</>}
+            </p>
+          </div>
+
+          {/* Role Toggle on Login Screen */}
+          <div className="flex bg-slate-100 p-1 rounded-2xl">
+            <button
+              type="button"
+              onClick={() => setRole(UserRole.TENANT)}
+              className={`flex-1 py-3 px-4 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${role === UserRole.TENANT ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-400'}`}
+            >
+              Tenant
+            </button>
+            <button
+              type="button"
+              onClick={() => setRole(UserRole.LANDLORD)}
+              className={`flex-1 py-3 px-4 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${role === UserRole.LANDLORD ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-400'}`}
+            >
+              Landlord
+            </button>
           </div>
 
           <form onSubmit={handleLogin} className="space-y-5">
