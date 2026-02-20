@@ -16,24 +16,25 @@ import { onAuthStateChanged } from 'firebase/auth';
 import { TRANSLATIONS, Locale } from './translations';
 
 const App: React.FC = () => {
-  const [currentUser, setCurrentUser] = useState<user |="" null="">(null);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [activeTab, setActiveTab] = useState<'home' | 'search' | 'listings' | 'profile'>('home');
-  const [selectedListing, setSelectedListing] = useState<listing |="" null="">(null);
+  const [selectedListing, setSelectedListing] = useState<Listing | null>(null);
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [isSupportModalOpen, setIsSupportModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [filterType, setFilterType] = useState<unittype |="" 'all'="">('All');
-  const [listings, setListings] = useState<listing[]>([]);
+  const [filterType, setFilterType] = useState<UnitType | 'all'>('All');
+  const [listings, setListings] = useState<Listing[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isOfflineMode, setIsOfflineMode] = useState(false);
   const [isAuthChecking, setIsAuthChecking] = useState(true);
   const [exploringTown, setExploringTown] = useState<'Kimana' | 'Loitokitok' | 'Illasit' | 'Simba Cement' | null>(null);
   const [vacantOnly, setVacantOnly] = useState(false);
-  const [globalLogo, setGlobalLogo] = useState<string |="" null="">(null);
+  const [globalLogo, setGlobalLogo] = useState<string | null>(null);
+
 
   // Theme and Language State
   const [isDarkMode, setIsDarkMode] = useState(() => localStorage.getItem('theme') === 'dark');
-  const [language, setLanguage] = useState<locale>(() => (localStorage.getItem('language') as Locale) || 'EN');
+  const [language, setLanguage] = useState<Locale>(() => (localStorage.getItem('language') as Locale) || 'EN');
 
   useEffect(() => {
     const cachedLogo = localStorage.getItem('global_logo');
@@ -168,46 +169,52 @@ const App: React.FC = () => {
   }
 
   if (!currentUser) {
-    return <authflow onauthenticated="{handleAuthenticated}" logourl="{globalLogo}"/>;
+  return <AuthFlow onAuthenticated={handleAuthenticated} logoUrl={globalLogo} />;
+}
+
+const renderHomeContent = () => {
+  if (isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 text-slate-400 gap-4">
+        <i className="fas fa-circle-notch animate-spin text-3xl"></i>
+        <p className="text-[10px] font-black uppercase tracking-widest">Updating Market View...</p>
+      </div>
+    );
   }
 
-  const renderHomeContent = () => {
-    if (isLoading) {
-      return (
-        <div classname="flex flex-col items-center justify-center py-20 text-slate-400 gap-4">
-          <i classname="fas fa-circle-notch animate-spin text-3xl"></i>
-          <p classname="text-[10px] font-black uppercase tracking-widest">Updating Market View...</p>
+  if (searchQuery || filterType !== 'All') {
+    return (
+      <div className="space-y-4 animate-in fade-in slide-in-from-bottom duration-500">
+        <div className="flex items-center justify-between px-1">
+          <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+            {searchQuery ? `Filtering by "${searchQuery}"` : `${filterType} Units`}
+          </h3>
+          <button 
+            onClick={() => { setSearchQuery(''); setFilterType('All'); }} 
+            className="text-[10px] font-black text-blue-600 uppercase tracking-widest"
+          >
+            Clear All
+          </button>
         </div>
-      );
-    }
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {filteredListings.map(listing => (
+            <ListingCard 
+              key={listing.id} 
+              listing={listing} 
+              onClick={() => setSelectedListing(listing)} 
+            />
+          ))}
+          {filteredListings.length === 0 && (
+            <div className="col-span-full py-12 text-center bg-white dark:bg-slate-900 rounded-3xl border border-dashed border-slate-200 dark:border-slate-800">
+              <i className="fas fa-house-circle-exclamation text-4xl text-slate-200 mb-3"></i>
+              <p className="text-slate-500 font-medium">No matches in this area.</p>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
 
-    if (searchQuery || filterType !== 'All') {
-      return (
-        <div classname="space-y-4 animate-in fade-in slide-in-from-bottom duration-500">
-          <div classname="flex items-center justify-between px-1">
-            <h3 classname="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-              {searchQuery ? `Filtering by "${searchQuery}"` : `${filterType} Units`}
-            </h3>
-            <button onclick="{()" ==""> {setSearchQuery(''); setFilterType('All');}} 
-              className="text-[10px] font-black text-blue-600 uppercase tracking-widest"
-            >
-              Clear All
-            </button>
-          </div>
-          <div classname="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {filteredListings.map(listing => (
-              <listingcard key="{listing.id}" listing="{listing}" onclick="{()" ==""> setSelectedListing(listing)} />
-            ))}
-            {filteredListings.length === 0 && (
-              <div classname="col-span-full py-12 text-center bg-white dark:bg-slate-900 rounded-3xl border border-dashed border-slate-200 dark:border-slate-800">
-                <i classname="fas fa-house-circle-exclamation text-4xl text-slate-200 mb-3"></i>
-                <p classname="text-slate-500 font-medium">No matches in this area.</p>
-              </div>
-            )}
-          </div>
-        </div>
-      );
-    }
 
     return (
       <div classname="space-y-10 animate-in fade-in duration-700">
@@ -371,104 +378,163 @@ const App: React.FC = () => {
     }
 
     if (selectedListing) {
-      return (
-        <listingdetail listing="{selectedListing}" onback="{()" ==""> setSelectedListing(null)} 
-          onUnlock={() => setIsPaymentModalOpen(true)}
-          isUnlocked={currentUser.unlockedListings.includes(selectedListing.id)}
-          currentUser={currentUser}
-          onAddReview={handleAddReview}
-        />
-      );
-    }
-
-    return (
-      <div classname="space-y-6">
-        <div classname="space-y-3">
-          <div classname="relative">
-            <i classname="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
-            <input type="text" placeholder="{t(&#39;searchPlaceholder&#39;)}" classname="w-full pl-11 pr-4 py-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl outline-none shadow-sm dark:text-white font-medium text-black" value="{searchQuery}" onchange="{(e)" ==""> setSearchQuery(e.target.value)}
-            />
-          </div>
-          <filters activetype="{filterType}" onselect="{setFilterType}" vacantonly="{vacantOnly}" ontogglevacant="{()" ==""> setVacantOnly(!vacantOnly)} />
-        </div>
-        {renderHomeContent()}
-      </div>
-    );
-  };
-
-  const unlockFee = selectedListing?.unitType === UnitType.AIRBNB ? UNLOCK_FEE_AIRBNB : 
-                  (selectedListing?.unitType === UnitType.BUSINESS_HOUSE ? UNLOCK_FEE_BUSINESS : UNLOCK_FEE_STANDARD);
-
   return (
-    <div classname="min-h-screen pb-24 bg-slate-50 dark:bg-slate-950 transition-colors">
-      <header classname="sticky top-0 z-30 bg-white/80 dark:bg-slate-950/80 backdrop-blur-md px-4 py-3 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center">
-        <div classname="flex items-center gap-3">
-          <div classname="w-9 h-9 bg-blue-600 rounded-xl flex items-center justify-center text-white shadow-lg overflow-hidden">
-            {globalLogo ? (
-              <img src="{globalLogo}" alt="Logo" classname="w-full h-full object-cover"/>
-            ) : (
-              <i classname="fas fa-house-chimney"></i>
-            )}
-          </div>
-          <h1 classname="text-sm font-black text-slate-800 dark:text-slate-100 uppercase tracking-tight">Masqani Poa</h1>
+    <ListingDetail 
+      listing={selectedListing} 
+      onBack={() => setSelectedListing(null)} 
+      onUnlock={() => setIsPaymentModalOpen(true)}
+      isUnlocked={currentUser.unlockedListings.includes(selectedListing.id)}
+      currentUser={currentUser}
+      onAddReview={handleAddReview}
+    />
+  );
+}
+
+return (
+  <div className="space-y-6">
+    <div className="space-y-3">
+      <div className="relative">
+        <i className="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
+        <input 
+          type="text" 
+          placeholder={t('searchPlaceholder')} 
+          className="w-full pl-11 pr-4 py-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl outline-none shadow-sm dark:text-white font-medium text-black" 
+          value={searchQuery} 
+          onChange={(e) => setSearchQuery(e.target.value)} 
+        />
+      </div>
+      <Filters 
+        activeType={filterType} 
+        onSelect={setFilterType} 
+        vacantOnly={vacantOnly} 
+        onToggleVacant={() => setVacantOnly(!vacantOnly)} 
+      />
+    </div>
+    {renderHomeContent()}
+  </div>
+);
+
+const unlockFee = selectedListing?.unitType === UnitType.AIRBNB 
+  ? UNLOCK_FEE_AIRBNB 
+  : (selectedListing?.unitType === UnitType.BUSINESS_HOUSE 
+      ? UNLOCK_FEE_BUSINESS 
+      : UNLOCK_FEE_STANDARD);
+
+return (
+  <div className="min-h-screen pb-24 bg-slate-50 dark:bg-slate-950 transition-colors">
+    <header className="sticky top-0 z-30 bg-white/80 dark:bg-slate-950/80 backdrop-blur-md px-4 py-3 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center">
+      <div className="flex items-center gap-3">
+        <div className="w-9 h-9 bg-blue-600 rounded-xl flex items-center justify-center text-white shadow-lg overflow-hidden">
+          {globalLogo ? (
+            <img src={globalLogo} alt="Logo" className="w-full h-full object-cover"/>
+          ) : (
+            <i className="fas fa-house-chimney"></i>
+          )}
         </div>
-        <button onclick="{()" ==""> {setActiveTab('profile'); setSelectedListing(null);}} className="w-9 h-9 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 dark:text-slate-400 active:scale-90 overflow-hidden">
-           {currentUser.name ? <span classname="text-[10px] font-black">{currentUser.name.substring(0,1)}</span> : <i classname="fas fa-user-circle"></i>}
-        </button>
-      </header>
+        <h1 className="text-sm font-black text-slate-800 dark:text-slate-100 uppercase tracking-tight">Masqani Poa</h1>
+      </div>
+      <button 
+        onClick={() => { setActiveTab('profile'); setSelectedListing(null); }} 
+        className="w-9 h-9 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 dark:text-slate-400 active:scale-90 overflow-hidden"
+      >
+        {currentUser.name 
+          ? <span className="text-[10px] font-black">{currentUser.name.substring(0,1)}</span> 
+          : <i className="fas fa-user-circle"></i>}
+      </button>
+    </header>
 
-      <main classname="px-4 py-4 max-w-2xl mx-auto min-h-[calc(100vh-140px)]">
-        {renderMainContent()}
-      </main>
-
-      <nav classname="fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur px-8 py-3 flex justify-around items-center border-t border-slate-100 dark:border-slate-800 safe-area-inset-bottom">
-        <button onclick="{()" ==""> {setActiveTab('home'); setSelectedListing(null);}} className={`flex flex-col items-center gap-1 ${activeTab === 'home' ? 'text-blue-600' : 'text-slate-400'}`}>
-          <i classname="fas fa-home text-lg"></i>
-          <span classname="text-[9px] font-black uppercase tracking-tighter">{t('market')}</span>
-        </button>
-        <button onclick="{()" ==""> {setActiveTab('search'); setSelectedListing(null);}} className={`flex flex-col items-center gap-1 ${activeTab === 'search' ? 'text-blue-600' : 'text-slate-400'}`}>
-          <i classname="fas fa-map-marked-alt text-lg"></i>
-          <span classname="text-[9px] font-black uppercase tracking-tighter">{t('explore')}</span>
-        </button>
-        <button onclick="{()" ==""> {setActiveTab('listings'); setSelectedListing(null);}} className={`flex flex-col items-center gap-1 ${activeTab === 'listings' ? 'text-blue-600' : 'text-slate-400'}`}>
-          <i classname="fas fa-heart text-lg"></i>
-          <span classname="text-[9px] font-black uppercase tracking-tighter">{t('saved')}</span>
-        </button>
-        <button onclick="{()" ==""> {setActiveTab('profile'); setSelectedListing(null);}} className={`flex flex-col items-center gap-1 ${activeTab === 'profile' ? 'text-blue-600' : 'text-slate-400'}`}>
-          <i classname="fas fa-cog text-lg"></i>
-          <span classname="text-[9px] font-black uppercase tracking-tighter">{t('account')}</span>
-        </button>
-      </nav>
-
-      {isPaymentModalOpen && (
-        <paymentmodal onclose="{()" ==""> setIsPaymentModalOpen(false)} 
-          onSuccess={() => {
-            if (currentUser && selectedListing) {
-              FirebaseService.unlockListingForUser(currentUser.email, selectedListing.id).then(() => {
-                setCurrentUser({
-                  ...currentUser,
-                  unlockedListings: [...currentUser.unlockedListings, selectedListing.id]
-                });
-                
-                // Show details before reverting
-                alert(`Unlock Successful!\n\nBuilding: ${selectedListing.buildingName || 'N/A'}\nLandlord: ${selectedListing.landlordName}\nPhone: ${selectedListing.landlordPhone}`);
-                
-                setIsPaymentModalOpen(false);
-                // Automatic Home Screen after unlock
-                setActiveTab('home');
-                setSelectedListing(null);
-              });
-            }
-          }}
-          title="Secure Unlock"
-          amount={unlockFee}
-          subtitle={`Revealing Contact: ${selectedListing?.title}`}
+    <main className="px-4 py-4 max-w-2xl mx-auto min-h-[calc(100vh-140px)]">
+      {activeTab === 'profile' && (
+        <Settings 
+          currentUser={currentUser} 
+          onLogout={handleLogout} 
+          onUpdateUser={setCurrentUser} 
+          isDarkMode={isDarkMode} 
+          setIsDarkMode={setIsDarkMode} 
+          language={language} 
+          setLanguage={setLanguage} 
+          t={t}
         />
       )}
 
-      {isSupportModalOpen && <contactsupportmodal onclose="{()" ==""> setIsSupportModalOpen(false)} />}
-    </div>
-  );
-};
+      {activeTab === 'search' && renderExploreContent()}
+
+      {currentUser.role === UserRole.LANDLORD && (
+        <LandlordDashboard 
+          listings={listings}
+          onUpdateListing={async (l) => {
+            setListings(prev => prev.map(x => x.id === l.id ? l : x));
+            try {
+              await FirebaseService.updateListing(l.id, l);
+            } catch (e) {
+              console.error("Failed to update listing on Firestore", e);
+            }
+          }}
+          onCreateListing={async (l) => {
+            const id = await FirebaseService.createListing(l);
+            setListings(prev => [...prev, { ...l, id }]);
+            return id;
+          }}
+          landlordId={currentUser.id}
+          landlordName={currentUser.name}
+          landlordPhone={currentUser.phone}
+          landlordEmail={currentUser.email}
+          onViewPublicDetails={setSelectedListing}
+          onGoHome={() => { setActiveTab('home'); setSelectedListing(null); }}
+        />
+      )}
+
+      {activeTab !== 'profile' && activeTab !== 'search' && currentUser.role !== UserRole.LANDLORD && renderMainContent()}
+    </main>
+
+    <nav className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur px-8 py-3 flex justify-around items-center border-t border-slate-100 dark:border-slate-800 safe-area-inset-bottom">
+      <button onClick={() => { setActiveTab('home'); setSelectedListing(null); }} className={`flex flex-col items-center gap-1 ${activeTab === 'home' ? 'text-blue-600' : 'text-slate-400'}`}>
+        <i className="fas fa-home text-lg"></i>
+        <span className="text-[9px] font-black uppercase tracking-tighter">{t('market')}</span>
+      </button>
+      <button onClick={() => { setActiveTab('search'); setSelectedListing(null); }} className={`flex flex-col items-center gap-1 ${activeTab === 'search' ? 'text-blue-600' : 'text-slate-400'}`}>
+        <i className="fas fa-map-marked-alt text-lg"></i>
+        <span className="text-[9px] font-black uppercase tracking-tighter">{t('explore')}</span>
+      </button>
+      <button onClick={() => { setActiveTab('listings'); setSelectedListing(null); }} className={`flex flex-col items-center gap-1 ${activeTab === 'listings' ? 'text-blue-600' : 'text-slate-400'}`}>
+        <i className="fas fa-heart text-lg"></i>
+        <span className="text-[9px] font-black uppercase tracking-tighter">{t('saved')}</span>
+      </button>
+      <button onClick={() => { setActiveTab('profile'); setSelectedListing(null); }} className={`flex flex-col items-center gap-1 ${activeTab === 'profile' ? 'text-blue-600' : 'text-slate-400'}`}>
+        <i className="fas fa-cog text-lg"></i>
+        <span className="text-[9px] font-black uppercase tracking-tighter">{t('account')}</span>
+      </button>
+    </nav>
+
+    {isPaymentModalOpen && (
+      <PaymentModal 
+        onClose={() => setIsPaymentModalOpen(false)} 
+        onSuccess={() => {
+          if (currentUser && selectedListing) {
+            FirebaseService.unlockListingForUser(currentUser.email, selectedListing.id).then(() => {
+              setCurrentUser({
+                ...currentUser,
+                unlockedListings: [...currentUser.unlockedListings, selectedListing.id]
+              });
+
+              alert(`Unlock Successful!\n\nBuilding: ${selectedListing.buildingName || 'N/A'}\nLandlord: ${selectedListing.landlordName}\nPhone: ${selectedListing.landlordPhone}`);
+
+              setIsPaymentModalOpen(false);
+              setActiveTab('home');
+              setSelectedListing(null);
+            });
+          }
+        }}
+        title="Secure Unlock"
+        amount={unlockFee}
+        subtitle={`Revealing Contact: ${selectedListing?.title}`}
+      />
+    )}
+
+    {isSupportModalOpen && (
+      <ContactSupportModal onClose={() => setIsSupportModalOpen(false)} />
+    )}
+  </div>
+);
 
 export default App;
