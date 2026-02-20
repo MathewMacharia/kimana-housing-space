@@ -9,6 +9,7 @@ import PaymentModal from './components/PaymentModal';
 import AuthFlow from './components/AuthFlow';
 import Settings from './components/Settings';
 import ContactSupportModal from './components/ContactSupportModal';
+import VacancyToggle, { VacancyFilter } from './components/VacancyToggle';
 import { FirebaseService } from './services/db';
 import { auth } from './firebase';
 import { onAuthStateChanged } from 'firebase/auth';
@@ -22,6 +23,7 @@ const App: React.FC = () => {
   const [isSupportModalOpen, setIsSupportModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<UnitType | 'All'>('All');
+  const [filterVacancy, setFilterVacancy] = useState<VacancyFilter>('All');
   const [listings, setListings] = useState<Listing[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isOfflineMode, setIsOfflineMode] = useState(false);
@@ -109,7 +111,10 @@ const App: React.FC = () => {
       l.locationName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       l.unitType.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesType = filterType === 'All' || l.unitType === filterType;
-    return matchesSearch && matchesType;
+    const matchesVacancy = filterVacancy === 'All' ||
+      (filterVacancy === 'Vacant' && l.isVacant) ||
+      (filterVacancy === 'Occupied' && !l.isVacant);
+    return matchesSearch && matchesType && matchesVacancy;
   });
 
   const businessListings = listings.filter(l => l.unitType === UnitType.BUSINESS_HOUSE);
@@ -173,7 +178,7 @@ const App: React.FC = () => {
               {searchQuery ? `Filtering by "${searchQuery}"` : `${filterType} Units`}
             </h3>
             <button
-              onClick={() => { setSearchQuery(''); setFilterType('All'); }}
+              onClick={() => { setSearchQuery(''); setFilterType('All'); setFilterVacancy('All'); }}
               className="text-[10px] font-black text-blue-600 uppercase tracking-widest"
             >
               Clear All
@@ -397,7 +402,10 @@ const App: React.FC = () => {
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
-          <Filters activeType={filterType} onSelect={setFilterType} />
+          <div className="flex items-center justify-between gap-4">
+            <Filters activeType={filterType} onSelect={setFilterType} />
+            <VacancyToggle activeFilter={filterVacancy} onSelect={setFilterVacancy} />
+          </div>
         </div>
         {renderHomeContent()}
       </div>
