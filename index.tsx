@@ -1,6 +1,6 @@
+
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import './index.css';   // ✅ Tailwind styles imported here
 import App from './App';
 
 const rootElement = document.getElementById('root');
@@ -10,7 +10,7 @@ if (!rootElement) {
 
 const root = ReactDOM.createRoot(rootElement);
 root.render(
-  <React.StrictMode>
-    <App />
+  <react.strictmode>
+    <app/>
   </React.StrictMode>
 );

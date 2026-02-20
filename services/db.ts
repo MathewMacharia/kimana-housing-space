@@ -1,67 +1,64 @@
 
-import {
-  collection,
-  doc,
-  getDoc,
-  getDocs,
-  setDoc,
-  updateDoc,
+import { 
+  collection, 
+  doc, 
+  getDoc, 
+  getDocs, 
+  setDoc, 
+  updateDoc, 
   addDoc,
-  Timestamp
+  Timestamp 
 } from "firebase/firestore";
 import { ref, uploadString, getDownloadURL } from "firebase/storage";
 import { db, storage, auth } from "../firebase";
-import { User, Listing, UserRole } from "../types";
+import { User, Listing } from "../types";
 
 export const FirebaseService = {
   // User Profile Management
   async saveUserProfile(user: User): Promise<void> {
     try {
       if (!db || !auth.currentUser) return;
-      // Separate collections for Landlords and Tenants
-      const collectionName = user.role === UserRole.LANDLORD ? "landlords" : "tenants";
-      const userRef = doc(db, collectionName, user.email || user.id);
-
+      // Use email or UID as document ID for security rules compatibility
+      const userRef = doc(db, "users", user.email || user.id); 
       await setDoc(userRef, {
         ...user,
         updatedAt: Timestamp.now()
       }, { merge: true });
-      console.log(`✅ Profile successfully saved to "${collectionName}" collection for:`, user.email);
     } catch (e: any) {
-      console.error("❌ Firestore saveUserProfile failed:", e);
+      if (e.code === 'permission-denied') {
+        console.warn("Firestore profile sync ignored: Missing permissions. User likely not signed in.");
+      } else {
+        console.error("Firestore saveUserProfile failed:", e);
+      }
     }
   },
 
-  async getUserProfile(identifier: string): Promise<User | null> {
+  async getUserByPhone(identifier: string): Promise<user |="" null=""> {
     try {
       if (!db || !auth.currentUser) return null;
-
-      // Check Landlords first
-      const landlordRef = doc(db, "landlords", identifier);
-      const landlordSnap = await getDoc(landlordRef);
-      if (landlordSnap.exists()) return landlordSnap.data() as User;
-
-      // Check Tenants second
-      const tenantRef = doc(db, "tenants", identifier);
-      const tenantSnap = await getDoc(tenantRef);
-      if (tenantSnap.exists()) return tenantSnap.data() as User;
-
-      return null;
+      const userRef = doc(db, "users", identifier);
+      const userSnap = await getDoc(userRef);
+      return userSnap.exists() ? (userSnap.data() as User) : null;
     } catch (e: any) {
-      console.error("Firestore getUserProfile failed:", e);
+      if (e.code === 'permission-denied') {
+        console.warn("Firestore read denied: Missing permissions. Use Auth session first.");
+      }
       return null;
     }
   },
 
   // Listing Management
-  async getListings(): Promise<Listing[]> {
+  async getListings(): Promise<listing[]> {
     try {
       if (!db) return [];
       const listingsRef = collection(db, "listings");
-
+      
       // Attempt to fetch from cloud
       const querySnapshot = await getDocs(listingsRef);
-      return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Listing));
+      const allListings = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Listing));
+      
+      // Filter for verified listings on client side
+      return allListings.filter(l => l.isVerified === true);
     } catch (e: any) {
       if (e.code === 'permission-denied') {
         console.warn("Firestore getListings: Permission Denied. Rules likely require authentication.");
@@ -72,7 +69,7 @@ export const FirebaseService = {
     }
   },
 
-  async createListing(listing: Omit<Listing, 'id'>): Promise<string> {
+  async createListing(listing: Omit<listing, 'id'="">): Promise<string> {
     try {
       if (!db || !auth.currentUser) throw new Error("Authentication required for submissions");
       const listingsRef = collection(db, "listings");
@@ -87,7 +84,7 @@ export const FirebaseService = {
     }
   },
 
-  async updateListing(id: string, updates: Partial<Listing>): Promise<void> {
+  async updateListing(id: string, updates: Partial<listing>): Promise<void> {
     try {
       if (!db || !auth.currentUser) return;
       const listingRef = doc(db, "listings", id);
@@ -102,19 +99,12 @@ export const FirebaseService = {
   },
 
   // Image Storage
-  async uploadPropertyImage(path: string, file: File | string): Promise<string> {
+  async uploadPropertyImage(path: string, base64Data: string): Promise<string> {
     try {
       if (!storage || !auth.currentUser) throw new Error("Storage requires an active session");
       const storageRef = ref(storage, path);
-
-      if (typeof file === 'string') {
-        const cleanData = file.includes(",") ? file.split(",")[1] : file;
-        await uploadString(storageRef, cleanData, 'base64');
-      } else {
-        const { uploadBytes } = await import("firebase/storage");
-        await uploadBytes(storageRef, file);
-      }
-
+      const cleanData = base64Data.includes(",") ? base64Data.split(",")[1] : base64Data;
+      await uploadString(storageRef, cleanData, 'base64');
       return await getDownloadURL(storageRef);
     } catch (e) {
       console.error("Firebase Storage upload failed:", e);
@@ -126,8 +116,7 @@ export const FirebaseService = {
   async unlockListingForUser(identifier: string, listingId: string): Promise<void> {
     try {
       if (!db || !auth.currentUser) return;
-      // Unlocks are currently only relevant for Tenants
-      const userRef = doc(db, "tenants", identifier);
+      const userRef = doc(db, "users", identifier);
       const userSnap = await getDoc(userRef);
       if (userSnap.exists()) {
         const userData = userSnap.data() as User;
@@ -139,6 +128,38 @@ export const FirebaseService = {
       }
     } catch (e) {
       console.error("Firestore unlockListingForUser failed:", e);
+      throw e;
+    }
+  },
+
+  // Global Settings (Logo, etc)
+  async getGlobalSettings(): Promise<any> {
+    try {
+      if (!db) return null;
+      const settingsRef = doc(db, "settings", "global");
+      const settingsSnap = await getDoc(settingsRef);
+      return settingsSnap.exists() ? settingsSnap.data() : null;
+    } catch (e: any) {
+      if (e.code === 'permission-denied') {
+        // Silently handle permission errors for unauthenticated users
+        // This is expected if the logo is requested on the login page but rules require auth
+        return null;
+      }
+      console.error("Firestore getGlobalSettings failed:", e);
+      return null;
+    }
+  },
+
+  async updateGlobalSettings(updates: any): Promise<void> {
+    try {
+      if (!db || !auth.currentUser) return;
+      const settingsRef = doc(db, "settings", "global");
+      await setDoc(settingsRef, {
+        ...updates,
+        updatedAt: Timestamp.now()
+      }, { merge: true });
+    } catch (e) {
+      console.error("Firestore updateGlobalSettings failed:", e);
       throw e;
     }
   }

@@ -1,5 +1,5 @@
 import { initializeApp, getApps, getApp } from "firebase/app";
-import { getAuth, GoogleAuthProvider } from "firebase/auth";
+import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 import { getAnalytics, isSupported } from "firebase/analytics";
@@ -29,7 +29,6 @@ try {
 const auth = getAuth(app);
 const db = getFirestore(app);
 const storage = getStorage(app);
-const googleProvider = new GoogleAuthProvider();
 
 // Analytics is optional and can fail in some environments
 isSupported().then(supported => {
@@ -38,4 +37,4 @@ isSupported().then(supported => {
 
 console.log("✅ Firebase Auth, Firestore & Storage Registered via GSTATIC 10.8.0");
 
-export { app, auth, db, storage, googleProvider };
+export { app, auth, db, storage };

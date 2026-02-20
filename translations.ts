@@ -1,7 +1,7 @@
 
 export type Locale = 'EN' | 'SW' | 'ZH' | 'FR' | 'ES' | 'DE';
 
-export const TRANSLATIONS: Record<Locale, any> = {
+export const TRANSLATIONS: Record<locale, any=""> = {
   EN: {
     market: "Market",
     explore: "Explore",

@@ -28,6 +28,7 @@ export interface Listing {
   id: string;
   landlordId: string;
   title: string;
+  buildingName?: string;
   description: string;
   unitType: UnitType;
   price: number;
@@ -69,4 +70,5 @@ export interface User {
   favorites: string[];
   savedSearches: SavedSearch[];
   isEncrypted: boolean;
+  logoUrl?: string;
 }

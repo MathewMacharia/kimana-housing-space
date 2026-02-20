@@ -1,15 +1,14 @@
 
 import { GoogleGenAI, Type } from "@google/genai";
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-
 /**
  * Enhanced Search Helper:
  * Takes a messy user query and returns structured search terms.
  */
 export async function getEnhancedSearchTerms(query: string) {
+  const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
   const response = await ai.models.generateContent({
-    model: 'gemini-3-flash-preview',
+    model: 'gemini-flash-latest',
     contents: `Translate this housing search query into search keywords: "${query}"`,
     config: {
       responseMimeType: "application/json",
@@ -39,10 +38,11 @@ export async function getEnhancedSearchTerms(query: string) {
 export async function refineDescription(description: string) {
   if (!description || description.length < 10) return description;
   
+  const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
-      contents: `You are a world-class real estate copywriter in Kenya. Refine the following property description for a listing in Kimana/Loitokitok area. Make it professional, persuasive, and appealing to potential tenants while keeping it honest. 
+      model: 'gemini-flash-latest',
+      contents: `You are a world-class real estate copywriter in Kenya. Refine the following property description for a listing in Kimana/Loitokitok/Illasit area. Make it professional, persuasive, and appealing to potential tenants while keeping it honest. 
       
       Original draft: "${description}"
       

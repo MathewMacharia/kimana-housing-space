@@ -5,9 +5,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Masqani Poa</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <script type='text/javascript' nonce='SCWuZAbHIhjvF5vrQ2D1FQ==' src='https://aistudio.google.com/K-Qod_1xL34fVekATM4cUpO1aFzC9uxM67RyEnV7p5ovhs0-nClImz8YdLbJXAE8wzo83HhUHsYFg48h_Shv9xt9X30IlKWYNrUlYpUwG2_ih0rMnz_KeiaIDR9sDcX1FKruBHYwxVfAs4tR4BSKJuXcpbSIF_4PGj5XyY4qfDRTE1ltkbB8WMApBpIxOL6nBxpb3iwoNdkkimCpEaOkAawQ7i1jqBtvLt6q9WtipgPACJlITJV3ZVeJCP8hDbru1Rf2GzTn5V9_dHTbRE7Z2Zm7OihXqbCdQhqCApJoi9r8WrlZpYGkSEqkEi0bDpSi12cZi-9ToDX0WNV-jiLraTGqJ802ys8WITPhR9V_7gAjnq8V7nb4hJhvtu1yZHJ0pJqp9UqgCw_Ab8tbL54ia1FdIKxBiaeIOWbKPWT0OITmJqRbKXQi2FYVwTnqcNkHal4Ay67-uehfHAAvwlLqNuuMXbtPkx5Aa8fexhk1bvj5Zqdnc4_TyPw1eWoyASk5uOCEI8oTp57gwJg0TSDWcQfhfCMoc4xQA1ehzaSLXzGt1y6Wkd5UpYQSUvKoigqM9helntb_ByDi2Yd41jTSVauHM62meMx-q_Cs-MuE5ckemwhCdA'></script><script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet">
     <script>
         tailwind.config = {
             darkMode: 'class',
@@ -25,6 +25,10 @@
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         
+        /* Ensure all typed input is black */
+        input, textarea, select { color: black !important; }
+        .dark input, .dark textarea, .dark select { color: black !important; }
+
         /* Smooth transitions for theme switching */
         * { transition: background-color 0.2s ease-in-out, border-color 0.2s ease-in-out; }
     </style>

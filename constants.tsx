@@ -39,13 +39,26 @@ export const LOCATIONS_HIERARCHY = {
     'Custom',
     'Mountain (Oloitokitok Boys Route)',
     'Patipati'
+  ],
+  'Illasit': [
+    'Town Centre',
+    'Market Area',
+    'Border Point',
+    'Residential Zone A',
+    'Residential Zone B'
+  ],
+  'Simba Cement': [
+    'Factory Gate Area',
+    'Staff Quarters',
+    'Main Road Junction',
+    'Trading Centre'
   ]
 };
 
 // Flattened list for legacy support and simple selects
 export const KIMANA_LOCATIONS = LOCATIONS_HIERARCHY['Kimana'];
 export const LOITOKITOK_LOCATIONS = LOCATIONS_HIERARCHY['Loitokitok'];
-export const ALL_AREAS = [...KIMANA_LOCATIONS, ...LOITOKITOK_LOCATIONS];
+export const ALL_AREAS = [...KIMANA_LOCATIONS, ...LOITOKITOK_LOCATIONS, ...LOCATIONS_HIERARCHY['Illasit'], ...LOCATIONS_HIERARCHY['Simba Cement']];
 
 const mockReviews: Review[] = [
   {
@@ -70,7 +83,8 @@ export const MOCK_LISTINGS: Listing[] = [
   {
     id: '1',
     landlordId: 'l1',
-    title: 'Modern 2-Bedroom near Kimana Center',
+    title: 'Modern 2-Bedroom',
+    buildingName: 'Riverside Apartments',
     description: 'Beautiful 2-bedroom apartment with constant water supply, secure parking, and tiled floors. Just walking distance to the main road. The compound is quiet and highly secure with 24/7 guard.',
     unitType: UnitType.TWO_BEDROOM,
     price: 15000,
@@ -93,7 +107,8 @@ export const MOCK_LISTINGS: Listing[] = [
   {
     id: '2',
     landlordId: 'l2',
-    title: 'Loitokitok Viewpoint Airbnb',
+    title: 'Loitokitok Viewpoint',
+    buildingName: 'Kilimanjaro Heights',
     description: 'Stunning views of Kilimanjaro from the balcony. Located in a high-altitude area of Loitokitok with fresh air and ultimate privacy.',
     unitType: UnitType.AIRBNB,
     price: 4500,
@@ -126,7 +141,8 @@ export const MOCK_LISTINGS: Listing[] = [
   {
     id: '3',
     landlordId: 'l3',
-    title: 'Premium Stall - Kimana Main Market',
+    title: 'Premium Stall',
+    buildingName: 'Kimana Main Market Plaza',
     description: 'Strategic business space in the heart of Kimana. Ideal for retail, electronics, or a boutique. High foot traffic and secure lockable gates.',
     unitType: UnitType.BUSINESS_HOUSE,
     price: 8000,
