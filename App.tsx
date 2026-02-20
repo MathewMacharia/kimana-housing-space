@@ -9,7 +9,6 @@ import PaymentModal from './components/PaymentModal';
 import AuthFlow from './components/AuthFlow';
 import Settings from './components/Settings';
 import ContactSupportModal from './components/ContactSupportModal';
-import VacancyToggle, { VacancyFilter } from './components/VacancyToggle';
 import { FirebaseService } from './services/db';
 import { auth } from './firebase';
 import { onAuthStateChanged } from 'firebase/auth';
@@ -23,7 +22,6 @@ const App: React.FC = () => {
   const [isSupportModalOpen, setIsSupportModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<UnitType | 'All'>('All');
-  const [filterVacancy, setFilterVacancy] = useState<VacancyFilter>('All');
   const [listings, setListings] = useState<Listing[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isOfflineMode, setIsOfflineMode] = useState(false);
@@ -111,10 +109,7 @@ const App: React.FC = () => {
       l.locationName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       l.unitType.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesType = filterType === 'All' || l.unitType === filterType;
-    const matchesVacancy = filterVacancy === 'All' ||
-      (filterVacancy === 'Vacant' && l.isVacant) ||
-      (filterVacancy === 'Occupied' && !l.isVacant);
-    return matchesSearch && matchesType && matchesVacancy;
+    return matchesSearch && matchesType;
   });
 
   const businessListings = listings.filter(l => l.unitType === UnitType.BUSINESS_HOUSE);
@@ -178,7 +173,7 @@ const App: React.FC = () => {
               {searchQuery ? `Filtering by "${searchQuery}"` : `${filterType} Units`}
             </h3>
             <button
-              onClick={() => { setSearchQuery(''); setFilterType('All'); setFilterVacancy('All'); }}
+              onClick={() => { setSearchQuery(''); setFilterType('All'); }}
               className="text-[10px] font-black text-blue-600 uppercase tracking-widest"
             >
               Clear All
@@ -200,46 +195,24 @@ const App: React.FC = () => {
     }
 
     return (
-      <div className="space-y-10 animate-in fade-in duration-700">
+      <div className="space-y-6 animate-in fade-in duration-700">
         {/* Welcome Greeting */}
         <div className="mb-2">
           <h2 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">Karibu Masqani</h2>
           <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mt-1">Finding your perfect home in Kimana</p>
         </div>
 
-        <section className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-xl font-black text-slate-800 dark:text-slate-100 tracking-tight flex items-center gap-2">
-                <i className="fas fa-shop text-blue-600"></i> {t('bizSpace')}
-              </h2>
-              <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">Premium Business Stalls</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {filteredListings.map(listing => (
+            <ListingCard key={listing.id} listing={listing} onClick={() => setSelectedListing(listing)} />
+          ))}
+          {filteredListings.length === 0 && (
+            <div className="col-span-full py-12 text-center bg-white dark:bg-slate-900 rounded-3xl border border-dashed border-slate-200 dark:border-slate-800">
+              <i className="fas fa-house-circle-exclamation text-4xl text-slate-200 mb-3"></i>
+              <p className="text-slate-500 font-medium">No listings available here.</p>
             </div>
-            <button onClick={() => setFilterType(UnitType.BUSINESS_HOUSE)} className="text-[10px] font-black text-blue-600 uppercase tracking-widest border border-blue-100 dark:border-blue-900 px-3 py-1.5 rounded-full bg-blue-50 dark:bg-blue-900/20 shadow-sm">{t('viewAll')}</button>
-          </div>
-          <div className="flex gap-4 overflow-x-auto no-scrollbar snap-x snap-mandatory -mx-4 px-4 pb-2">
-            {businessListings.map(l => (
-              <ListingCard key={l.id} listing={l} variant="horizontal" onClick={() => setSelectedListing(l)} />
-            ))}
-          </div>
-        </section>
-
-        <section className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-xl font-black text-slate-800 dark:text-slate-100 tracking-tight flex items-center gap-2">
-                <i className="fas fa-bed text-blue-600"></i> {t('topResidencies')}
-              </h2>
-              <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">Houses & Airbnb Units</p>
-            </div>
-            <button onClick={() => setFilterType('All')} className="text-[10px] font-black text-blue-600 uppercase tracking-widest border border-blue-100 dark:border-blue-900 px-3 py-1.5 rounded-full bg-blue-50 dark:bg-blue-900/20 shadow-sm">{t('viewAll')}</button>
-          </div>
-          <div className="flex gap-4 overflow-x-auto no-scrollbar snap-x snap-mandatory -mx-4 px-4 pb-2">
-            {residentialListings.map(l => (
-              <ListingCard key={l.id} listing={l} variant="horizontal" onClick={() => setSelectedListing(l)} />
-            ))}
-          </div>
-        </section>
+          )}
+        </div>
       </div>
     );
   };
@@ -402,10 +375,7 @@ const App: React.FC = () => {
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
-          <div className="flex items-center justify-between gap-4">
-            <Filters activeType={filterType} onSelect={setFilterType} />
-            <VacancyToggle activeFilter={filterVacancy} onSelect={setFilterVacancy} />
-          </div>
+          <Filters activeType={filterType} onSelect={setFilterType} />
         </div>
         {renderHomeContent()}
       </div>

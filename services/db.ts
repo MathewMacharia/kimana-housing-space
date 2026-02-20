@@ -65,10 +65,7 @@ export const FirebaseService = {
 
       // Attempt to fetch from cloud
       const querySnapshot = await getDocs(listingsRef);
-      const allListings = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Listing));
-
-      // Filter for verified listings on client side
-      return allListings.filter(l => l.isVerified === true);
+      return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Listing));
     } catch (e: any) {
       if (e.code === 'permission-denied') {
         console.warn("Firestore getListings: Permission Denied. Rules likely require authentication.");

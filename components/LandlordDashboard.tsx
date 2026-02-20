@@ -3,7 +3,6 @@ import React, { useState, useRef } from 'react';
 import { Listing, UnitType } from '../types';
 import { LISTING_FEE_STANDARD, LISTING_FEE_AIRBNB_MONTHLY, LISTING_FEE_BUSINESS, LOCATIONS_HIERARCHY } from '../constants';
 import PaymentModal from './PaymentModal';
-import VacancyToggle, { VacancyFilter } from './VacancyToggle';
 import { FirebaseService } from '../services/db';
 import { refineDescription } from '../services/geminiService';
 
@@ -30,7 +29,6 @@ const LandlordDashboard: React.FC<LandlordDashboardProps> = ({
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isRefining, setIsRefining] = useState(false);
-  const [filterVacancy, setFilterVacancy] = useState<VacancyFilter>('All');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [currentFormListing, setCurrentFormListing] = useState<Partial<Listing>>({
@@ -45,13 +43,7 @@ const LandlordDashboard: React.FC<LandlordDashboardProps> = ({
     locationName: ''
   });
 
-  const landlordListings = listings.filter(l => {
-    const matchesLandlord = l.landlordId === landlordId;
-    const matchesVacancy = filterVacancy === 'All' ||
-      (filterVacancy === 'Vacant' && l.isVacant) ||
-      (filterVacancy === 'Occupied' && !l.isVacant);
-    return matchesLandlord && matchesVacancy;
-  });
+  const landlordListings = listings.filter(l => l.landlordId === landlordId);
 
   const handleOpenAddForm = () => {
     setIsEditing(false);
@@ -185,7 +177,7 @@ const LandlordDashboard: React.FC<LandlordDashboardProps> = ({
             return FirebaseService.uploadPropertyImage(path, file);
           });
 
-          const existingRemoteUrls = finalPhotoUrls.filter(p => !p.startsWith('data:'));
+          const existingRemoteUrls = finalPhotoUrls;
           const newRemoteUrls = await Promise.all(uploadPromises);
           finalPhotoUrls = [...existingRemoteUrls, ...newRemoteUrls];
         }
@@ -258,22 +250,13 @@ const LandlordDashboard: React.FC<LandlordDashboardProps> = ({
           });
 
           finalPhotoUrls = await Promise.all(uploadPromises);
-        } else {
-          // Fallback: If for some reason no files are in state, 
-          // we MUST NOT save the base64 previews.
-          finalPhotoUrls = pendingListing.photos.filter(p => !p.startsWith('data:'));
-        }
-
-        // 2. Final check: Strictly exclude any remaining base64 data to stay under 1MB
-        const sanitizedPhotos = finalPhotoUrls.filter(p => p.startsWith('http'));
-
-        if (sanitizedPhotos.length === 0 && !isEditing) {
-          throw new Error("No valid cloud image URLs generated. Check Storage permissions.");
+          // Fallback: Use current photos as is
+          finalPhotoUrls = pendingListing.photos;
         }
 
         const listingToSave = {
           ...pendingListing,
-          photos: sanitizedPhotos
+          photos: finalPhotoUrls
         };
 
         const newId = await onCreateListing(listingToSave);
@@ -313,15 +296,12 @@ const LandlordDashboard: React.FC<LandlordDashboardProps> = ({
           <h2 className="text-xl font-black text-slate-800 dark:text-slate-100 tracking-tight">Management</h2>
           <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">Agency Portal</p>
         </div>
-        <div className="flex items-center gap-6">
-          <VacancyToggle activeFilter={filterVacancy} onSelect={setFilterVacancy} />
-          <button
-            onClick={handleOpenAddForm}
-            className="bg-blue-600 text-white px-5 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-100 active:scale-95 flex items-center gap-2 transition-all"
-          >
-            <i className="fas fa-plus"></i> New Asset
-          </button>
-        </div>
+        <button
+          onClick={handleOpenAddForm}
+          className="bg-blue-600 text-white px-5 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-100 active:scale-95 flex items-center gap-2 transition-all"
+        >
+          <i className="fas fa-plus"></i> New Asset
+        </button>
       </div>
 
       <div className="grid grid-cols-1 gap-4">

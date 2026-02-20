@@ -148,19 +148,17 @@ const AuthFlow: React.FC<AuthFlowProps> = ({ onAuthenticated }) => {
       const result = await signInWithPopup(auth, googleProvider);
       console.log("Google Sign-In successful:", result.user.email);
 
-      // Look for any existing profile (Landlord or Tenant) associated with this email
+      // Try to find user profile in any collection
       let profile = await FirebaseService.getUserProfile(result.user.email || result.user.uid);
 
       if (profile) {
-        console.log("Existing profile found for social login. Redirecting...");
         onAuthenticated(profile);
       } else {
-        console.log("No profile found. Creating new tenant profile...");
         // Create basic profile for first-time Google users
         const newUser: User = {
           id: result.user.uid,
           name: result.user.displayName || "User",
-          phone: "",
+          phone: "", // Google doesn't always provide phone
           email: result.user.email || "",
           role: UserRole.TENANT,
           unlockedListings: [],
@@ -169,8 +167,10 @@ const AuthFlow: React.FC<AuthFlowProps> = ({ onAuthenticated }) => {
           isEncrypted: true
         };
         await FirebaseService.saveUserProfile(newUser);
-        onAuthenticated(newUser);
+        profile = newUser;
       }
+
+      onAuthenticated(profile);
     } catch (error: any) {
       setIsLoading(false);
       console.error("Google login failed with error code:", error.code);
