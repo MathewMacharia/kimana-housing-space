@@ -16,9 +16,9 @@ import { onAuthStateChanged } from 'firebase/auth';
 import { TRANSLATIONS, Locale } from './translations';
 
 const App: React.FC = () => {
-  const [currentUser, setCurrentUser] = useState<user |="" null="">(null);
-  const [activeTab, setActiveTab] = useState<'home' | 'search' | 'listings' | 'profile'>('home');
-  const [selectedListing, setSelectedListing] = useState<listing |="" null="">(null);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+const [activeTab, setActiveTab] = useState<'home' | 'search' | 'listings' | 'profile'>('home');
+const [selectedListing, setSelectedListing] = useState<Listing | null>(null);
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [isSupportModalOpen, setIsSupportModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
