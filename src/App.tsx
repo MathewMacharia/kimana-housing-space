@@ -22,14 +22,14 @@ const [selectedListing, setSelectedListing] = useState<Listing | null>(null);
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [isSupportModalOpen, setIsSupportModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [filterType, setFilterType] = useState<unittype |="" 'all'="">('All');
+  const [filterType, setFilterType] = useState<UnitType | 'all'>('all');
   const [listings, setListings] = useState<listing[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isOfflineMode, setIsOfflineMode] = useState(false);
   const [isAuthChecking, setIsAuthChecking] = useState(true);
   const [exploringTown, setExploringTown] = useState<'Kimana' | 'Loitokitok' | 'Illasit' | 'Simba Cement' | null>(null);
   const [vacantOnly, setVacantOnly] = useState(false);
-  const [globalLogo, setGlobalLogo] = useState<string |="" null="">(null);
+  const [globalLogo, setGlobalLogo] = useState<string | null>(null);
 
   // Theme and Language State
   const [isDarkMode, setIsDarkMode] = useState(() => localStorage.getItem('theme') === 'dark');
@@ -196,7 +196,12 @@ const [selectedListing, setSelectedListing] = useState<Listing | null>(null);
           </div>
           <div classname="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {filteredListings.map(listing => (
-              <listingcard key="{listing.id}" listing="{listing}" onclick="{()" ==""> setSelectedListing(listing)} />
+              <ListingCard 
+  key={listing.id} 
+  listing={listing} 
+  onClick={() => setSelectedListing(listing)} 
+/>
+
             ))}
             {filteredListings.length === 0 && (
               <div classname="col-span-full py-12 text-center bg-white dark:bg-slate-900 rounded-3xl border border-dashed border-slate-200 dark:border-slate-800">
@@ -229,7 +234,13 @@ const [selectedListing, setSelectedListing] = useState<Listing | null>(null);
           </div>
           <div classname="flex gap-4 overflow-x-auto no-scrollbar snap-x snap-mandatory -mx-4 px-4 pb-2">
             {businessListings.map(l => (
-              <listingcard key="{l.id}" listing="{l}" variant="horizontal" onclick="{()" ==""> setSelectedListing(l)} />
+              <ListingCard 
+  key={l.id} 
+  listing={l} 
+  variant="horizontal" 
+  onClick={() => setSelectedListing(l)} 
+/>
+
             ))}
           </div>
         </section>
@@ -242,11 +253,23 @@ const [selectedListing, setSelectedListing] = useState<Listing | null>(null);
               </h2>
               <p classname="text-[10px] text-slate-400 font-black uppercase tracking-widest">Houses & Airbnb Units</p>
             </div>
-            <button onclick="{()" ==""> setFilterType('All')} className="text-[10px] font-black text-blue-600 uppercase tracking-widest border border-blue-100 dark:border-blue-900 px-3 py-1.5 rounded-full bg-blue-50 dark:bg-blue-900/20 shadow-sm">{t('viewAll')}</button>
+            <button 
+  onClick={() => setFilterType('all')} 
+  className="text-[10px] font-black text-blue-600 uppercase tracking-widest border border-blue-100 dark:border-blue-900 px-3 py-1.5 rounded-full bg-blue-50 dark:bg-blue-900/20 shadow-sm"
+>
+  {t('viewAll')}
+</button>
+
           </div>
           <div classname="flex gap-4 overflow-x-auto no-scrollbar snap-x snap-mandatory -mx-4 px-4 pb-2">
             {residentialListings.map(l => (
-              <listingcard key="{l.id}" listing="{l}" variant="horizontal" onclick="{()" ==""> setSelectedListing(l)} />
+              <ListingCard 
+  key={l.id} 
+  listing={l} 
+  variant="horizontal" 
+  onClick={() => setSelectedListing(l)} 
+/>
+
             ))}
           </div>
         </section>
@@ -298,39 +321,41 @@ const [selectedListing, setSelectedListing] = useState<Listing | null>(null);
         </div>
         
         <div classname="grid grid-cols-1 gap-4">
-          <button onclick={() => setExploringTown('Kimana')}
-            className="relative overflow-hidden group h-40 rounded-[2.5rem] bg-blue-600 shadow-xl shadow-blue-100 dark:shadow-none active:scale-95 transition-all text-left"
-          >
-            <div classname="absolute inset-0 bg-[url(&#39;https://images.unsplash.com/photo-1542332213-31f87348057f?q=80&amp;w=2070&amp;auto=format&amp;fit=crop&#39;)] bg-cover bg-center opacity-30 mix-blend-overlay"></div>
-            <div classname="relative h-full p-8 flex flex-col justify-between">
-              <div classname="w-12 h-12 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center text-white text-xl">
-                <i classname="fas fa-mountain"></i>
-              </div>
-              <div>
-                <h3 classname="text-2xl font-black text-white tracking-tight">Kimana Zone</h3>
-                <p classname="text-[10px] text-white/80 font-black uppercase tracking-[0.2em]">{LOCATIONS_HIERARCHY['Kimana'].length} Sub-areas</p>
-              </div>
-            </div>
-          </button>
-
-          <button onclick="{()" ==""> setExploringTown('Loitokitok')}
-            className="relative overflow-hidden group h-40 rounded-[2.5rem] bg-slate-800 shadow-xl shadow-slate-200 dark:shadow-none active:scale-95 transition-all text-left"
-          >
-            <div classname="absolute inset-0 bg-[url(&#39;https://images.unsplash.com/photo-1502602898657-3e91760cbb34?q=80&amp;w=2073&amp;auto=format&amp;fit=crop&#39;)] bg-cover bg-center opacity-30 mix-blend-overlay"></div>
-            <div classname="relative h-full p-8 flex flex-col justify-between">
-              <div classname="w-12 h-12 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center text-white text-xl">
-                <i classname="fas fa-cloud-sun"></i>
-              </div>
-              <div>
-                <h3 classname="text-2xl font-black text-white tracking-tight">Loitokitok Zone</h3>
-                <p classname="text-[10px] text-white/80 font-black uppercase tracking-[0.2em]">{LOCATIONS_HIERARCHY['Loitokitok'].length} Neighborhoods</p>
-              </div>
-            </div>
-          </button>
-        </div>
+          <div className="grid grid-cols-1 gap-4">
+  <button 
+    onClick={() => setExploringTown('Kimana')}
+    className="relative overflow-hidden group h-40 rounded-[2.5rem] bg-blue-600 shadow-xl shadow-blue-100 dark:shadow-none active:scale-95 transition-all text-left"
+  >
+    <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1542332213-31f87348057f?q=80&w=2070&auto=format&fit=crop')] bg-cover bg-center opacity-30 mix-blend-overlay"></div>
+    
+    <div className="relative h-full p-8 flex flex-col justify-between">
+      <div className="w-12 h-12 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center text-white text-xl">
+        <i className="fas fa-mountain"></i>
       </div>
-    );
-  };
+      <h3 className="text-2xl font-black text-white tracking-tight">Kimana Zone</h3>
+      <p className="text-[10px] text-white/80 font-black uppercase tracking-[0.2em]">
+        {LOCATIONS_HIERARCHY['Kimana'].length} Sub-areas
+      </p>
+    </div>
+  </button>
+
+  <button
+    onClick={() => setExploringTown('Loitokitok')}
+    className="relative overflow-hidden group h-40 rounded-[2.5rem] bg-slate-800 shadow-xl shadow-slate-200 dark:shadow-none active:scale-95 transition-all text-left"
+  >
+    <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1502602898657-3e91760cbb34?q=80&w=2073&auto=format&fit=crop')] bg-cover bg-center opacity-30 mix-blend-overlay"></div>
+
+    <div className="relative h-full p-8 flex flex-col justify-between">
+      <div className="w-12 h-12 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center text-white text-xl">
+        <i className="fas fa-cloud-sun"></i>
+      </div>
+      <h3 className="text-2xl font-black text-white tracking-tight">Loitokitok Zone</h3>
+      <p className="text-[10px] text-white/80 font-black uppercase tracking-[0.2em]">
+        {LOCATIONS_HIERARCHY['Loitokitok'].length} Neighborhoods
+      </p>
+    </div>
+  </button>
+</div>
 
   const renderMainContent = () => {
     if (activeTab === 'profile') {
@@ -345,9 +370,14 @@ const [selectedListing, setSelectedListing] = useState<Listing | null>(null);
 
     if (currentUser.role === UserRole.LANDLORD) {
       return (
-        <landlorddashboard listings="{listings}" onupdatelisting="{async" (l)=""> {
-             // Handle state update locally
-             setListings(prev => prev.map(x => x.id === l.id ? l : x));
+        <LandlordDashboard 
+  listings={listings} 
+  onUpdateListing={async (l) => {
+    // Handle state update locally
+    setListings(prev => prev.map(x => x.id === l.id ? l : x));
+  }} 
+/>
+
              // Handle persistence
              try {
                await FirebaseService.updateListing(l.id, l);
