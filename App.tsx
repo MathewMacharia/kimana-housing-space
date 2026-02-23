@@ -134,8 +134,11 @@ const App: React.FC = () => {
     }
   }, [currentUser, isAuthChecking, loadData]);
 
-  // Robust filtering logic
-  const isListingVacant = (l: Listing) => l.isVacant === true || l.isVacant === 'true';
+  // Robust filtering logic to handle both boolean and string truthiness
+  const isListingVacant = (l: Listing) => {
+    const val = l.isVacant as unknown as string | boolean;
+    return val === true || val === 'true';
+  };
 
   const filteredListings = listings.filter(l => {
     const searchLower = searchQuery.toLowerCase();
