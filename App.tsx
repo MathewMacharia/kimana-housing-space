@@ -207,7 +207,7 @@ const App: React.FC = () => {
       );
     }
 
-    if (searchQuery || filterType !== 'all') {
+    if (searchQuery || filterType !== 'all' || vacantOnly) {
       return (
         <div className="space-y-4 animate-in fade-in slide-in-from-bottom duration-500">
           <div className="flex items-center justify-between px-1">
