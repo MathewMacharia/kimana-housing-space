@@ -56,27 +56,15 @@ const App: React.FC = () => {
   }, [language]);
 
   const loadData = useCallback(async () => {
-    setIsLoading(true);
+    // Note: Listings are now handled by the real-time observer in useEffect below
     try {
-      const fetchedListings = await FirebaseService.getListings();
-      if (fetchedListings && fetchedListings.length > 0) {
-        setListings(fetchedListings);
-        setIsOfflineMode(false);
-      } else {
-        setListings(MOCK_LISTINGS);
-        setIsOfflineMode(true);
-      }
-
       const settings = await FirebaseService.getGlobalSettings();
       if (settings?.logoUrl) {
         setGlobalLogo(settings.logoUrl);
         localStorage.setItem('global_logo', settings.logoUrl);
       }
     } catch (error: any) {
-      setListings(MOCK_LISTINGS);
-      setIsOfflineMode(true);
-    } finally {
-      setIsLoading(false);
+      console.error("Failed to load global settings:", error);
     }
   }, []);
 
@@ -133,6 +121,26 @@ const App: React.FC = () => {
       loadData();
     }
   }, [currentUser, isAuthChecking, loadData]);
+
+  // Real-time synchronization for listings
+  useEffect(() => {
+    if (isAuthChecking) return;
+
+    console.log("Setting up real-time listings subscription...");
+    const unsubscribe = FirebaseService.subscribeToListings((fetchedListings) => {
+      if (fetchedListings && fetchedListings.length > 0) {
+        setListings(fetchedListings);
+        setIsOfflineMode(false);
+      } else if (listings.length === 0) {
+        // Fallback to mocks ONLY if database is truly empty and no state exists
+        setListings(MOCK_LISTINGS);
+        setIsOfflineMode(true);
+      }
+      setIsLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [isAuthChecking]);
 
   // Robust filtering logic to handle both boolean and string truthiness
   const isListingVacant = (l: Listing) => {

@@ -7,6 +7,8 @@ import {
   setDoc,
   updateDoc,
   addDoc,
+  onSnapshot,
+  query,
   Timestamp
 } from "firebase/firestore";
 import { ref, uploadString, getDownloadURL } from "firebase/storage";
@@ -118,6 +120,19 @@ export const FirebaseService = {
       }
       throw e;
     }
+  },
+
+  subscribeToListings(callback: (listings: Listing[]) => void): () => void {
+    if (!db) return () => { };
+    const listingsRef = collection(db, "listings");
+    const q = query(listingsRef);
+
+    return onSnapshot(q, (snapshot) => {
+      const allListings = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Listing));
+      callback(allListings);
+    }, (error) => {
+      console.error("Firestore subscribeToListings error:", error);
+    });
   },
 
   async createListing(listing: Omit<Listing, 'id'>): Promise<string> {
