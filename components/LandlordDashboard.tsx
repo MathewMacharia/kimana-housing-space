@@ -24,6 +24,7 @@ const LandlordDashboard: React.FC<LandlordDashboardProps> = ({
   const [showForm, setShowForm] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [showPayment, setShowPayment] = useState(false);
+  const [reviewsListing, setReviewsListing] = useState<Listing | null>(null);
   const [pendingListing, setPendingListing] = useState<Omit<Listing, 'id'> | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -252,7 +253,7 @@ const LandlordDashboard: React.FC<LandlordDashboardProps> = ({
                   <i className={`fas ${l.isVacant ? 'fa-check-circle' : 'fa-times-circle'} mr-1.5`}></i>
                   {l.isVacant ? 'Vacant' : 'Occupied'}
                 </button>
-                <button onClick={() => onViewPublicDetails(l)}
+                <button onClick={() => setReviewsListing(l)}
                   className="text-[9px] font-black px-4 py-2 rounded-xl bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 uppercase tracking-widest border border-blue-100 dark:border-blue-800 active:scale-95 transition-all"
                 >
                   Reviews ({l.reviews.length})
@@ -407,6 +408,60 @@ const LandlordDashboard: React.FC<LandlordDashboardProps> = ({
           amount={listingFee}
           subtitle={`Activating Asset: ${pendingListing?.title}`}
         />
+      )}
+
+      {reviewsListing && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-md flex items-end sm:items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 w-full max-w-lg rounded-t-[2.5rem] sm:rounded-[2.5rem] flex flex-col max-h-[90vh] shadow-2xl animate-in slide-in-from-bottom duration-500 overflow-hidden">
+            <div className="p-8 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm">
+              <div className="space-y-1">
+                <h3 className="text-2xl font-black text-slate-900 dark:text-slate-100 tracking-tight">Property Reviews</h3>
+                <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest truncate max-w-[200px]">Feedback for {reviewsListing.title}</p>
+              </div>
+              <button onClick={() => setReviewsListing(null)} className="flex items-center gap-2 bg-slate-100 dark:bg-slate-800 px-4 py-2 rounded-2xl text-[10px] font-black text-slate-600 dark:text-slate-300 uppercase tracking-widest active:scale-95 transition-all">
+                <i className="fas fa-arrow-left"></i> Back
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-8 space-y-6 no-scrollbar">
+              {reviewsListing.reviews.length > 0 ? reviewsListing.reviews.map((r) => (
+                <div key={r.id} className="p-6 bg-slate-50 dark:bg-slate-800/50 rounded-3xl border border-slate-100 dark:border-slate-800 relative group animate-in slide-in-from-right duration-300">
+                  <div className="flex justify-between items-start mb-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-white dark:bg-slate-800 rounded-2xl flex items-center justify-center text-blue-600 text-xs font-black border border-slate-100 dark:border-slate-700 shadow-sm">
+                        {r.userName.substring(0, 1)}
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-black text-slate-800 dark:text-slate-100 uppercase tracking-tight">{r.userName}</h4>
+                        <p className="text-[8px] text-slate-400 font-black uppercase tracking-widest">{new Date(r.date).toLocaleDateString()}</p>
+                      </div>
+                    </div>
+                    <div className="flex gap-0.5">
+                      {[1, 2, 3, 4, 5].map(star => (
+                        <i key={star} className={`fas fa-star text-[10px] ${star <= r.rating ? 'text-orange-400' : 'text-slate-200 dark:text-slate-700'}`}></i>
+                      ))}
+                    </div>
+                  </div>
+                  <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-medium italic">"{r.comment}"</p>
+                </div>
+              )) : (
+                <div className="py-20 text-center">
+                  <div className="w-16 h-16 bg-slate-50 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-200 text-2xl">
+                    <i className="fas fa-comment-slash"></i>
+                  </div>
+                  <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest">No reviews received yet</p>
+                  <p className="text-slate-300 text-[9px] mt-2">Feedback will appear here once tenants start reviewing.</p>
+                </div>
+              )}
+            </div>
+
+            <div className="p-8 bg-slate-50/50 dark:bg-slate-800/20 border-t border-slate-100 dark:border-slate-800">
+              <button onClick={() => setReviewsListing(null)} className="w-full py-5 bg-slate-900 dark:bg-white dark:text-slate-900 text-white font-black rounded-3xl uppercase text-[10px] tracking-widest active:scale-[0.98] transition-all shadow-xl shadow-slate-200 dark:shadow-none">
+                Close Viewer
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
