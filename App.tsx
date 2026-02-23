@@ -144,8 +144,8 @@ const App: React.FC = () => {
     return matchesSearch && matchesType && matchesVacant;
   });
 
-  const businessListings = listings.filter(l => l.unitType === UnitType.BUSINESS_HOUSE);
-  const residentialListings = listings.filter(l => l.unitType !== UnitType.BUSINESS_HOUSE);
+  const businessListings = filteredListings.filter(l => l.unitType === UnitType.BUSINESS_HOUSE);
+  const residentialListings = filteredListings.filter(l => l.unitType !== UnitType.BUSINESS_HOUSE);
 
   const handleAuthenticated = (user: User) => setCurrentUser(user);
   const handleLogout = async () => {
