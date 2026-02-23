@@ -112,7 +112,17 @@ const AuthFlow: React.FC<AuthFlowProps> = ({ onAuthenticated, logoUrl }) => {
         isEncrypted: true
       };
 
-      await FirebaseService.saveUserProfile(newUser);
+      // CRITICAL: Ensure database entry is created BEFORE showing user as logged in
+      try {
+        await FirebaseService.saveUserProfile(newUser);
+        console.log("User profile created in Firestore successfully.");
+      } catch (dbError: any) {
+        console.error("Database profile creation failed during signup:", dbError);
+        // We might want to warn the user but let them in, or block them. 
+        // Given the requirement "always be the protocol", we should probably make sure it's known.
+        alert("Account created, but there was an issue setting up your profile. Please try logging in again.");
+      }
+
       setIsLoading(false);
       onAuthenticated(newUser); // Log in directly after signup
     } catch (error: any) {

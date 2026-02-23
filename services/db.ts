@@ -22,18 +22,24 @@ export const FirebaseService = {
   // User Profile Management
   async saveUserProfile(user: User): Promise<void> {
     try {
-      if (!db || !auth.currentUser) return;
+      if (!db) throw new Error("Firestore database not initialized");
+
       const collectionName = user.role === UserRole.LANDLORD ? "landlords" : "tenants";
-      // We use UID (user.id) as the primary key if available, fallback to email
-      const docId = user.id || user.email;
-      const userRef = doc(db, collectionName, docId);
+      // ALWAYS use UID (user.id) as the primary key for consistency
+      if (!user.id) throw new Error("User ID is required to save profile");
+
+      const userRef = doc(db, collectionName, user.id);
+
+      // We strip sensitive or redundant fields if needed, but for now we save the object
       await setDoc(userRef, {
         ...user,
         updatedAt: Timestamp.now()
       }, { merge: true });
+
       console.log(`✅ Profile successfully saved to "${collectionName}" collection for:`, user.email);
     } catch (e: any) {
       console.error("❌ Firestore saveUserProfile failed:", e);
+      throw e; // Propagate error to caller
     }
   },
 
@@ -49,7 +55,6 @@ export const FirebaseService = {
       // 2. Update Auth Email if changed
       if (user.email !== auth.currentUser.email) {
         try {
-          // verifyBeforeUpdateEmail is safer and doesn't immediately log out the user
           await verifyBeforeUpdateEmail(auth.currentUser, user.email);
           console.log("Verification email sent to new address.");
         } catch (authErr: any) {
@@ -70,17 +75,17 @@ export const FirebaseService = {
 
   async getUserProfile(identifier: string): Promise<User | null> {
     try {
-      if (!db || !auth.currentUser) return null;
+      if (!db) return null;
 
-      // Check Landlords first
+      // Try searching in Landlords first
       const landlordRef = doc(db, "landlords", identifier);
-      const landlordSnap = await getDoc(landlordRef);
-      if (landlordSnap.exists()) return landlordSnap.data() as User;
+      let snap = await getDoc(landlordRef);
+      if (snap.exists()) return snap.data() as User;
 
-      // Check Tenants second
+      // Try searching in Tenants
       const tenantRef = doc(db, "tenants", identifier);
-      const tenantSnap = await getDoc(tenantRef);
-      if (tenantSnap.exists()) return tenantSnap.data() as User;
+      snap = await getDoc(tenantRef);
+      if (snap.exists()) return snap.data() as User;
 
       return null;
     } catch (e: any) {

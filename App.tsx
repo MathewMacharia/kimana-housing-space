@@ -83,25 +83,41 @@ const App: React.FC = () => {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
-        const profile = await FirebaseService.getUserProfile(firebaseUser.email || firebaseUser.uid);
+        // Search by UID (standard) and Email (legacy fallback)
+        let profile = await FirebaseService.getUserProfile(firebaseUser.uid);
+        if (!profile && firebaseUser.email) {
+          profile = await FirebaseService.getUserProfile(firebaseUser.email);
+        }
+
         if (profile) {
+          // Verify ID matches for consistency if it was an email-based profile
+          if (profile.id !== firebaseUser.uid) {
+            profile = { ...profile, id: firebaseUser.uid };
+            await FirebaseService.saveUserProfile(profile);
+          }
+
           setCurrentUser({
             ...profile,
             favorites: profile.favorites || [],
             savedSearches: profile.savedSearches || []
           });
         } else {
+          // PROTOCOL: Every user MUST have a database profile.
+          // If they exist in Auth but not Firestore, create the profile now.
           const newUser: User = {
             id: firebaseUser.uid,
             name: firebaseUser.displayName || "User",
             email: firebaseUser.email || "",
             phone: "",
-            role: UserRole.TENANT,
+            role: UserRole.TENANT, // Default to tenant for recovery
             unlockedListings: [],
             favorites: [],
             savedSearches: [],
             isEncrypted: true
           };
+
+          console.warn("Missing database profile detected. Recreating for:", firebaseUser.email);
+          await FirebaseService.saveUserProfile(newUser);
           setCurrentUser(newUser);
         }
       } else {

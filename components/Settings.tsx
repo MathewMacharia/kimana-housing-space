@@ -123,26 +123,80 @@ const Settings: React.FC<SettingsProps> = ({
   if (activeModule === 'personal') {
     return (
       <div className="animate-in slide-in-from-right duration-300">
-        <button onClick={() => setActiveModule('main')} className="mb-6 flex items-center gap-2 text-slate-400 font-black uppercase text-[10px] tracking-widest">
-          <i className="fas fa-arrow-left"></i> Back to settings
+        <button onClick={() => setActiveModule('main')} className="mb-6 flex items-center gap-2 text-slate-400 font-bold uppercase text-[10px] tracking-widest active:scale-95 transition-transform">
+          <i className="fas fa-arrow-left"></i> BACK TO SETTINGS
         </button>
-        <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border border-slate-100 dark:border-slate-800">
-          <h3 className="text-xl font-black text-slate-800 dark:text-slate-100 mb-6">Personal Details</h3>
-          <form onSubmit={handleUpdateProfile} className="space-y-4">
-            <div className="space-y-1">
+
+        <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 shadow-xl shadow-slate-100 dark:shadow-none">
+          <div className="flex items-center gap-5 mb-10">
+            <div className="w-16 h-16 bg-blue-50 dark:bg-blue-900/20 rounded-2xl flex items-center justify-center text-blue-600 dark:text-blue-400 text-2xl shadow-sm">
+              <i className="fas fa-id-card"></i>
+            </div>
+            <div>
+              <h3 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">Personal Details</h3>
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-0.5">UPDATE YOUR CONTACT INFO</p>
+            </div>
+          </div>
+
+          <form onSubmit={handleUpdateProfile} className="space-y-6">
+            <div className="space-y-2">
               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Full Name</label>
-              <input required type="text" className="w-full p-4 bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-2xl outline-none font-bold text-sm text-black" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} />
+              <div className="relative group">
+                <i className="fas fa-user absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-blue-500 transition-colors"></i>
+                <input
+                  required
+                  type="text"
+                  placeholder="e.g. Mathew Macharia"
+                  className="w-full p-5 pl-14 bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700 rounded-3xl outline-none font-bold text-sm text-slate-800 dark:text-white focus:border-blue-200 dark:focus:border-blue-900 focus:bg-white dark:focus:bg-slate-800 transition-all"
+                  value={formData.name}
+                  onChange={e => setFormData({ ...formData, name: e.target.value })}
+                />
+              </div>
             </div>
-            <div className="space-y-1">
+
+            <div className="space-y-2">
               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Phone Number</label>
-              <input required type="tel" className="w-full p-4 bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-2xl outline-none font-bold text-sm text-black" value={formData.phone} onChange={e => setFormData({ ...formData, phone: e.target.value })} />
+              <div className="relative group">
+                <i className="fas fa-phone-alt absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-blue-500 transition-colors"></i>
+                <input
+                  required
+                  type="tel"
+                  placeholder="e.g. 0712345678"
+                  className="w-full p-5 pl-14 bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700 rounded-3xl outline-none font-bold text-sm text-slate-800 dark:text-white focus:border-blue-200 dark:focus:border-blue-900 focus:bg-white dark:focus:bg-slate-800 transition-all"
+                  value={formData.phone}
+                  onChange={e => setFormData({ ...formData, phone: e.target.value })}
+                />
+              </div>
             </div>
-            <div className="space-y-1">
+
+            <div className="space-y-2">
               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Email Address</label>
-              <input required type="email" className="w-full p-4 bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-2xl outline-none font-bold text-sm text-black" value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} />
+              <div className="relative group">
+                <i className="fas fa-envelope absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-blue-500 transition-colors"></i>
+                <input
+                  required
+                  type="email"
+                  placeholder="mmacharia1@gmail.com"
+                  className="w-full p-5 pl-14 bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700 rounded-3xl outline-none font-bold text-sm text-slate-800 dark:text-white focus:border-blue-200 dark:focus:border-blue-900 focus:bg-white dark:focus:bg-slate-800 transition-all"
+                  value={formData.email}
+                  onChange={e => setFormData({ ...formData, email: e.target.value })}
+                />
+              </div>
             </div>
-            <button type="submit" disabled={isUpdating} className="w-full py-4 bg-blue-600 text-white font-black rounded-xl text-[10px] uppercase tracking-widest active:scale-95 transition-all shadow-lg shadow-blue-100 dark:shadow-none">
-              {isUpdating ? <i className="fas fa-circle-notch animate-spin"></i> : 'Save Changes'}
+
+            <button
+              type="submit"
+              disabled={isUpdating}
+              className="w-full py-5 bg-blue-600 text-white font-black rounded-3xl text-sm uppercase tracking-widest active:scale-95 transition-all shadow-xl shadow-blue-100 dark:shadow-none flex items-center justify-center gap-3 mt-4"
+            >
+              {isUpdating ? (
+                <i className="fas fa-circle-notch animate-spin"></i>
+              ) : (
+                <>
+                  <i className="fas fa-check-circle"></i>
+                  SAVE PROFILE CHANGES
+                </>
+              )}
             </button>
           </form>
         </div>
