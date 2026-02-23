@@ -134,18 +134,25 @@ const App: React.FC = () => {
     }
   }, [currentUser, isAuthChecking, loadData]);
 
+  // Robust filtering logic
+  const isListingVacant = (l: Listing) => l.isVacant === true || l.isVacant === 'true';
+
   const filteredListings = listings.filter(l => {
-    const matchesSearch = l.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      l.locationName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      l.unitType.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (l.buildingName && l.buildingName.toLowerCase().includes(searchQuery.toLowerCase()));
+    const searchLower = searchQuery.toLowerCase();
+    const matchesSearch = !searchQuery ||
+      l.title.toLowerCase().includes(searchLower) ||
+      l.locationName.toLowerCase().includes(searchLower) ||
+      l.unitType.toLowerCase().includes(searchLower) ||
+      (l.buildingName && l.buildingName.toLowerCase().includes(searchLower));
+
     const matchesType = filterType === 'all' || l.unitType === filterType;
-    const matchesVacant = !vacantOnly || l.isVacant;
+    const matchesVacant = !vacantOnly || isListingVacant(l);
+
     return matchesSearch && matchesType && matchesVacant;
   });
 
-  const businessListings = filteredListings.filter(l => l.unitType === UnitType.BUSINESS_HOUSE);
-  const residentialListings = filteredListings.filter(l => l.unitType !== UnitType.BUSINESS_HOUSE);
+  const businessListings = listings.filter(l => l.unitType === UnitType.BUSINESS_HOUSE && (!vacantOnly || isListingVacant(l)));
+  const residentialListings = listings.filter(l => l.unitType !== UnitType.BUSINESS_HOUSE && (!vacantOnly || isListingVacant(l)));
 
   const handleAuthenticated = (user: User) => setCurrentUser(user);
   const handleLogout = async () => {
