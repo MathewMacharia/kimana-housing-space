@@ -30,6 +30,7 @@ const LandlordDashboard: React.FC<LandlordDashboardProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isRefining, setIsRefining] = useState(false);
   const [activeBuildingFolder, setActiveBuildingFolder] = useState<string | null>(null);
+  const [landlordVacantOnly, setLandlordVacantOnly] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [currentFormListing, setCurrentFormListing] = useState<Partial<Listing>>({
@@ -45,7 +46,15 @@ const LandlordDashboard: React.FC<LandlordDashboardProps> = ({
     buildingName: ''
   });
 
-  const landlordListings = listings.filter(l => l.landlordId === landlordId);
+  const landlordListings = listings.filter(l => {
+    const isOwner = l.landlordId === landlordId;
+    if (!isOwner) return false;
+    if (landlordVacantOnly) {
+      const val = l.isVacant as unknown as string | boolean;
+      return val === true || val === 'true';
+    }
+    return true;
+  });
 
   // Grouping logic for buildings
   const buildingsMap = landlordListings.reduce((acc, l) => {
@@ -321,16 +330,24 @@ const LandlordDashboard: React.FC<LandlordDashboardProps> = ({
           <h2 className="text-xl font-black text-slate-800 dark:text-slate-100 tracking-tight">Management</h2>
           <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">Agency Portal</p>
         </div>
-        {!activeBuildingFolder && (
-          <button onClick={handleOpenAddForm} className="bg-blue-600 text-white px-5 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-100 active:scale-95 flex items-center gap-2 transition-all">
-            <i className="fas fa-plus"></i> New Asset
+        <div className="flex items-center gap-3">
+          <button onClick={() => setLandlordVacantOnly(!landlordVacantOnly)}
+            className={`px-4 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 border-2 transition-all active:scale-95 ${landlordVacantOnly ? 'bg-green-600 border-green-600 text-white shadow-lg shadow-green-100' : 'bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-800 text-slate-400'}`}
+          >
+            <i className={`fas ${landlordVacantOnly ? 'fa-check-circle' : 'fa-filter'}`}></i>
+            {landlordVacantOnly ? 'Vacant Only' : 'All Assets'}
           </button>
-        )}
-        {activeBuildingFolder && (
-          <button onClick={handleOpenAddForm} className="bg-blue-600 text-white px-5 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-100 active:scale-95 flex items-center gap-2 transition-all">
-            <i className="fas fa-plus"></i> Add Unit
-          </button>
-        )}
+          {!activeBuildingFolder && (
+            <button onClick={handleOpenAddForm} className="bg-blue-600 text-white px-5 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-100 active:scale-95 flex items-center gap-2 transition-all">
+              <i className="fas fa-plus"></i> New Asset
+            </button>
+          )}
+          {activeBuildingFolder && (
+            <button onClick={handleOpenAddForm} className="bg-blue-600 text-white px-5 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-100 active:scale-95 flex items-center gap-2 transition-all">
+              <i className="fas fa-plus"></i> Add Unit
+            </button>
+          )}
+        </div>
       </div>
 
       {activeBuildingFolder ? renderUnitList() : renderFolderList()}
