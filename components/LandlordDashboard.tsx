@@ -29,6 +29,7 @@ const LandlordDashboard: React.FC<LandlordDashboardProps> = ({
   const [isUploading, setIsUploading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isRefining, setIsRefining] = useState(false);
+  const [activeBuildingFolder, setActiveBuildingFolder] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [currentFormListing, setCurrentFormListing] = useState<Partial<Listing>>({
@@ -46,6 +47,21 @@ const LandlordDashboard: React.FC<LandlordDashboardProps> = ({
 
   const landlordListings = listings.filter(l => l.landlordId === landlordId);
 
+  // Grouping logic for buildings
+  const buildingsMap = landlordListings.reduce((acc, l) => {
+    const bName = l.buildingName || 'Other Assets';
+    if (!acc[bName]) acc[bName] = [];
+    acc[bName].push(l);
+    return acc;
+  }, {} as Record<string, Listing[]>);
+
+  const buildingGroups = Object.entries(buildingsMap).map(([name, units]) => ({
+    name,
+    units
+  }));
+
+  const activeUnits = activeBuildingFolder ? (buildingsMap[activeBuildingFolder] || []) : [];
+
   const handleOpenAddForm = () => {
     setIsEditing(false);
     setCurrentFormListing({
@@ -60,7 +76,8 @@ const LandlordDashboard: React.FC<LandlordDashboardProps> = ({
       isPetsFriendly: false,
       locationName: '',
       title: '',
-      description: ''
+      description: '',
+      buildingName: activeBuildingFolder || '' // Pre-fill if inside a folder
     });
     setShowForm(true);
   };
@@ -215,20 +232,51 @@ const LandlordDashboard: React.FC<LandlordDashboardProps> = ({
 
   const listingFee = getListingFee();
 
-  return (
-    <div className="space-y-6 pb-10">
-      <div className="flex justify-between items-center bg-white dark:bg-slate-900 p-4 rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-sm">
-        <div>
-          <h2 className="text-xl font-black text-slate-800 dark:text-slate-100 tracking-tight">Management</h2>
-          <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">Agency Portal</p>
-        </div>
-        <button onClick={handleOpenAddForm} className="bg-blue-600 text-white px-5 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-100 active:scale-95 flex items-center gap-2 transition-all">
-          <i className="fas fa-plus"></i> New Asset
+  const renderFolderList = () => (
+    <div className="grid grid-cols-1 gap-4">
+      {buildingGroups.length > 0 ? buildingGroups.map(group => (
+        <button key={group.name} onClick={() => setActiveBuildingFolder(group.name)} className="bg-white dark:bg-slate-900 p-6 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 flex items-center justify-between shadow-sm hover:border-blue-200 transition-all group active:scale-[0.98]">
+          <div className="flex items-center gap-5">
+            <div className="w-16 h-16 rounded-[1.5rem] bg-blue-50 dark:bg-blue-900/20 text-blue-600 flex items-center justify-center text-2xl group-hover:bg-blue-600 group-hover:text-white transition-all">
+              <i className="fas fa-folder"></i>
+            </div>
+            <div className="text-left">
+              <h3 className="font-black text-slate-800 dark:text-slate-100 text-lg tracking-tight">{group.name}</h3>
+              <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest flex items-center gap-2">
+                <i className="fas fa-building"></i> {group.units.length} {group.units.length === 1 ? 'Unit' : 'Units'} Listed
+              </p>
+            </div>
+          </div>
+          <div className="w-10 h-10 rounded-full bg-slate-50 dark:bg-slate-800 flex items-center justify-center text-slate-300 group-hover:bg-blue-50 group-hover:text-blue-600 transition-all">
+            <i className="fas fa-chevron-right"></i>
+          </div>
         </button>
+      )) : (
+        <div className="py-20 text-center bg-white dark:bg-slate-900 rounded-[2.5rem] border-2 border-dashed border-slate-100 dark:border-slate-800">
+          <div className="w-16 h-16 bg-slate-50 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-200 text-2xl">
+            <i className="fas fa-house-chimney-user"></i>
+          </div>
+          <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest">No assets listed yet</p>
+          <button onClick={handleOpenAddForm} className="mt-4 text-blue-600 font-black text-[10px] uppercase tracking-widest">Start Management</button>
+        </div>
+      )}
+    </div>
+  );
+
+  const renderUnitList = () => (
+    <div className="space-y-6">
+      <div className="flex items-center gap-4 mb-2">
+        <button onClick={() => setActiveBuildingFolder(null)} className="w-10 h-10 rounded-full bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-400 active:scale-90 transition-transform shadow-sm">
+          <i className="fas fa-arrow-left"></i>
+        </button>
+        <div>
+          <h2 className="text-2xl font-black text-slate-800 dark:text-slate-100 tracking-tight">{activeBuildingFolder}</h2>
+          <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">{activeUnits.length} Units in this building</p>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 gap-4">
-        {landlordListings.length > 0 ? landlordListings.map(l => (
+        {activeUnits.map(l => (
           <div key={l.id} className="bg-white dark:bg-slate-900 p-5 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 flex gap-5 items-center shadow-sm hover:border-blue-200 transition-all group">
             <div className="relative cursor-pointer flex-shrink-0" onClick={() => onViewPublicDetails(l)}>
               <img src={l.photos[0]} className="w-24 h-24 object-cover rounded-3xl group-hover:scale-105 transition-transform" alt="" />
@@ -261,16 +309,31 @@ const LandlordDashboard: React.FC<LandlordDashboardProps> = ({
               </div>
             </div>
           </div>
-        )) : (
-          <div className="py-20 text-center bg-white dark:bg-slate-900 rounded-[2.5rem] border-2 border-dashed border-slate-100 dark:border-slate-800">
-            <div className="w-16 h-16 bg-slate-50 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-200 text-2xl">
-              <i className="fas fa-house-chimney-user"></i>
-            </div>
-            <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest">No assets listed yet</p>
-            <button onClick={handleOpenAddForm} className="mt-4 text-blue-600 font-black text-[10px] uppercase tracking-widest">Start Management</button>
-          </div>
+        ))}
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="space-y-6 pb-10">
+      <div className="flex justify-between items-center bg-white dark:bg-slate-900 p-4 rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-sm">
+        <div>
+          <h2 className="text-xl font-black text-slate-800 dark:text-slate-100 tracking-tight">Management</h2>
+          <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">Agency Portal</p>
+        </div>
+        {!activeBuildingFolder && (
+          <button onClick={handleOpenAddForm} className="bg-blue-600 text-white px-5 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-100 active:scale-95 flex items-center gap-2 transition-all">
+            <i className="fas fa-plus"></i> New Asset
+          </button>
+        )}
+        {activeBuildingFolder && (
+          <button onClick={handleOpenAddForm} className="bg-blue-600 text-white px-5 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-100 active:scale-95 flex items-center gap-2 transition-all">
+            <i className="fas fa-plus"></i> Add Unit
+          </button>
         )}
       </div>
+
+      {activeBuildingFolder ? renderUnitList() : renderFolderList()}
 
       {showForm && (
         <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-md flex items-end sm:items-center justify-center p-4">
