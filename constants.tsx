@@ -1,7 +1,7 @@
 
 import { Listing, UnitType, Review } from './types';
 
-const generateMockImages = (seed: string, count: number) => 
+const generateMockImages = (seed: string, count: number) =>
   Array.from({ length: count }, (_, i) => `https://picsum.photos/seed/${seed}${i}/800/600`);
 
 export const LOCATIONS_HIERARCHY = {
@@ -167,7 +167,9 @@ export const MOCK_LISTINGS: Listing[] = [
 export const UNLOCK_FEE_STANDARD = 50;
 export const UNLOCK_FEE_AIRBNB = 100;
 export const UNLOCK_FEE_BUSINESS = 50;
+export const UNLOCK_FEE_SHORT_STAY = 100;
 
 export const LISTING_FEE_STANDARD = 100;
 export const LISTING_FEE_AIRBNB_MONTHLY = 300;
 export const LISTING_FEE_BUSINESS = 150;
+export const LISTING_FEE_SHORT_STAY_PREMIUM = 300;

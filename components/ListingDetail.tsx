@@ -1,7 +1,7 @@
 
 import React, { useState, useRef } from 'react';
 import { Listing, Review, UnitType, UserRole } from '../types';
-import { UNLOCK_FEE_STANDARD, UNLOCK_FEE_AIRBNB, UNLOCK_FEE_BUSINESS } from '../constants';
+import { UNLOCK_FEE_STANDARD, UNLOCK_FEE_AIRBNB, UNLOCK_FEE_BUSINESS, UNLOCK_FEE_SHORT_STAY } from '../constants';
 
 interface ListingDetailProps {
   listing: Listing;
@@ -23,7 +23,9 @@ const ListingDetail: React.FC<ListingDetailProps> = ({
   const galleryRef = useRef<HTMLDivElement>(null);
 
   const getUnlockFee = () => {
-    if (listing.unitType === UnitType.AIRBNB) return UNLOCK_FEE_AIRBNB;
+    if (listing.unitType === UnitType.AIRBNB ||
+      listing.unitType === UnitType.GUEST_ROOM ||
+      listing.unitType === UnitType.CAMPSITE) return UNLOCK_FEE_SHORT_STAY;
     if (listing.unitType === UnitType.BUSINESS_HOUSE) return UNLOCK_FEE_BUSINESS;
     return UNLOCK_FEE_STANDARD;
   };
@@ -208,7 +210,7 @@ const ListingDetail: React.FC<ListingDetailProps> = ({
                     </p>
                     <div className="mt-3 pt-3 border-t border-slate-200 dark:border-slate-700">
                       <p className="text-[10px] text-slate-400 font-bold uppercase italic">
-                        (Ksh 50 for rental, 100 for bnb, 50 for Stalls/nyumba ya biashara)
+                        (Ksh 50 for rental, 100 for BnB/Guest Room/Campsite, 50 for Stalls)
                       </p>
                     </div>
                   </div>

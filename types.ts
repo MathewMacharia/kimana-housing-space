@@ -12,7 +12,9 @@ export enum UnitType {
   FOUR_BEDROOM = '4 Bedroom',
   OWN_COMPOUND = 'Own Compound',
   AIRBNB = 'Airbnb',
-  BUSINESS_HOUSE = 'Nyumba ya Biashara'
+  BUSINESS_HOUSE = 'Nyumba ya Biashara',
+  GUEST_ROOM = 'Guest Room',
+  CAMPSITE = 'Campsite'
 }
 
 export interface Review {

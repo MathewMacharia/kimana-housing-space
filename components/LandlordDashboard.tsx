@@ -1,7 +1,7 @@
 
 import React, { useState, useRef } from 'react';
 import { Listing, UnitType } from '../types';
-import { LISTING_FEE_STANDARD, LISTING_FEE_AIRBNB_MONTHLY, LISTING_FEE_BUSINESS, LOCATIONS_HIERARCHY } from '../constants';
+import { LISTING_FEE_STANDARD, LISTING_FEE_AIRBNB_MONTHLY, LISTING_FEE_BUSINESS, LISTING_FEE_SHORT_STAY_PREMIUM, LOCATIONS_HIERARCHY } from '../constants';
 import PaymentModal from './PaymentModal';
 import { FirebaseService } from '../services/db';
 import { refineDescription } from '../services/geminiService';
@@ -234,7 +234,9 @@ const LandlordDashboard: React.FC<LandlordDashboardProps> = ({
   };
 
   const getListingFee = () => {
-    if (currentFormListing.unitType === UnitType.AIRBNB) return LISTING_FEE_AIRBNB_MONTHLY;
+    if (currentFormListing.unitType === UnitType.AIRBNB ||
+      currentFormListing.unitType === UnitType.GUEST_ROOM ||
+      currentFormListing.unitType === UnitType.CAMPSITE) return LISTING_FEE_SHORT_STAY_PREMIUM;
     if (currentFormListing.unitType === UnitType.BUSINESS_HOUSE) return LISTING_FEE_BUSINESS;
     return LISTING_FEE_STANDARD;
   };
@@ -378,7 +380,18 @@ const LandlordDashboard: React.FC<LandlordDashboardProps> = ({
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 text-black">Category</label>
-                  <select className="w-full p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl outline-none border border-slate-100 dark:border-slate-700 font-black text-xs uppercase tracking-tight text-black" value={currentFormListing.unitType} onChange={(e) => setCurrentFormListing({ ...currentFormListing, unitType: e.target.value as UnitType })}>
+                  <select className="w-full p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl outline-none border border-slate-100 dark:border-slate-700 font-black text-xs uppercase tracking-tight text-black" value={currentFormListing.unitType}
+                    onChange={(e) => {
+                      const newType = e.target.value as UnitType;
+                      const isShortStay = newType === UnitType.AIRBNB || newType === UnitType.GUEST_ROOM || newType === UnitType.CAMPSITE;
+                      setCurrentFormListing({
+                        ...currentFormListing,
+                        unitType: newType,
+                        pricePeriod: isShortStay ? 'nightly' : 'monthly',
+                        deposit: isShortStay ? 0 : (currentFormListing.deposit || 0)
+                      });
+                    }}
+                  >
                     {Object.values(UnitType).map(t => <option key={t} value={t}>{t}</option>)}
                   </select>
                 </div>
@@ -408,12 +421,14 @@ const LandlordDashboard: React.FC<LandlordDashboardProps> = ({
                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 text-black">Pricing (Ksh)</label>
                   <input required type="number" placeholder="Price" className="w-full p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl outline-none border border-slate-100 dark:border-slate-700 font-black text-sm text-black" value={currentFormListing.price || ''} onChange={(e) => setCurrentFormListing({ ...currentFormListing, price: Number(e.target.value) })} />
                 </div>
-                {currentFormListing.unitType !== UnitType.AIRBNB && (
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 text-black">Security Deposit</label>
-                    <input required type="number" placeholder="Deposit" className="w-full p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl outline-none border border-slate-100 dark:border-slate-700 font-black text-sm text-black" value={currentFormListing.deposit || ''} onChange={(e) => setCurrentFormListing({ ...currentFormListing, deposit: Number(e.target.value) })} />
-                  </div>
-                )}
+                {currentFormListing.unitType !== UnitType.AIRBNB &&
+                  currentFormListing.unitType !== UnitType.GUEST_ROOM &&
+                  currentFormListing.unitType !== UnitType.CAMPSITE && (
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 text-black">Security Deposit</label>
+                      <input required type="number" placeholder="Deposit" className="w-full p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl outline-none border border-slate-100 dark:border-slate-700 font-black text-sm text-black" value={currentFormListing.deposit || ''} onChange={(e) => setCurrentFormListing({ ...currentFormListing, deposit: Number(e.target.value) })} />
+                    </div>
+                  )}
               </div>
 
               <div className="space-y-3">

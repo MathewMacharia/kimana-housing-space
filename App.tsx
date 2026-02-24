@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { User, UserRole, Listing, UnitType, Review } from './types';
-import { UNLOCK_FEE_STANDARD, UNLOCK_FEE_AIRBNB, UNLOCK_FEE_BUSINESS, MOCK_LISTINGS, LOCATIONS_HIERARCHY } from './constants';
+import { UNLOCK_FEE_STANDARD, UNLOCK_FEE_AIRBNB, UNLOCK_FEE_BUSINESS, UNLOCK_FEE_SHORT_STAY, MOCK_LISTINGS, LOCATIONS_HIERARCHY } from './constants';
 import ListingCard from './components/ListingCard';
 import ListingDetail from './components/ListingDetail';
 import LandlordDashboard from './components/LandlordDashboard';
@@ -415,7 +415,9 @@ const App: React.FC = () => {
     );
   };
 
-  const unlockFee = selectedListing?.unitType === UnitType.AIRBNB ? UNLOCK_FEE_AIRBNB :
+  const unlockFee = (selectedListing?.unitType === UnitType.AIRBNB ||
+    selectedListing?.unitType === UnitType.GUEST_ROOM ||
+    selectedListing?.unitType === UnitType.CAMPSITE) ? UNLOCK_FEE_SHORT_STAY :
     (selectedListing?.unitType === UnitType.BUSINESS_HOUSE ? UNLOCK_FEE_BUSINESS : UNLOCK_FEE_STANDARD);
 
   return (
