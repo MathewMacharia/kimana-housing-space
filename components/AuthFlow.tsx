@@ -275,6 +275,8 @@ const AuthFlow: React.FC<AuthFlowProps> = ({ onAuthenticated, logoUrl }) => {
             <input required type="password" placeholder="••••••••" className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none font-bold text-sm text-black" value={signupData.password} onChange={e => setSignupData({ ...signupData, password: e.target.value })} />
           </div>
 
+          <div id="recaptcha-container" className="my-2 flex justify-center scale-90 sm:scale-100"></div>
+
           <button type="submit" disabled={isLoading} className="w-full py-5 bg-blue-600 text-white font-black rounded-2xl shadow-xl active:scale-95 transition-all flex items-center justify-center gap-2 uppercase text-xs tracking-widest mt-4">
             {isLoading ? <i className="fas fa-circle-notch animate-spin"></i> : `Join as ${role}`}
           </button>
@@ -311,6 +313,8 @@ const AuthFlow: React.FC<AuthFlowProps> = ({ onAuthenticated, logoUrl }) => {
               </div>
               <input required type="password" placeholder="••••••••" className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none font-bold text-sm text-black" value={loginData.password} onChange={e => setLoginData({ ...loginData, password: e.target.value })} />
             </div>
+
+            <div id="recaptcha-container" className="my-2 flex justify-center scale-90 sm:scale-100"></div>
 
             <button type="submit" disabled={isLoading} className="w-full py-5 bg-blue-600 text-white font-black rounded-2xl shadow-xl active:scale-95 transition-all flex items-center justify-center gap-2 uppercase text-xs tracking-widest mt-4">
               {isLoading ? <i className="fas fa-circle-notch animate-spin"></i> : 'Secure Login'}
