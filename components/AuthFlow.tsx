@@ -25,6 +25,21 @@ const AuthFlow: React.FC<AuthFlowProps> = ({ onAuthenticated, logoUrl }) => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
+  // Auto-render reCAPTCHA checkbox
+  React.useEffect(() => {
+    const grecaptcha = (window as any).grecaptcha;
+    if ((step === 'login' || step === 'signup') && grecaptcha?.enterprise) {
+      grecaptcha.enterprise.ready(() => {
+        const container = document.getElementById('recaptcha-container');
+        if (container && container.innerHTML === '') {
+          grecaptcha.enterprise.render('recaptcha-container', {
+            sitekey: import.meta.env.VITE_RECAPTCHA_SITE_KEY
+          });
+        }
+      });
+    }
+  }, [step]);
+
   // Sign up form data
   const [signupData, setSignupData] = useState({
     fullName: '',
@@ -248,7 +263,7 @@ const AuthFlow: React.FC<AuthFlowProps> = ({ onAuthenticated, logoUrl }) => {
       <div className="min-h-screen bg-white p-6 animate-in slide-in-from-right duration-500 overflow-y-auto">
         <button onClick={() => setStep('welcome')} className="mb-6 text-slate-400 p-2 active:scale-90 transition-transform"><i className="fas fa-arrow-left text-xl"></i></button>
         <div className="space-y-1 mb-8">
-          <h2 className="text-3xl font-black text-slate-900 tracking-tight">{role === UserRole.TENANT ? t('joinAsTenant') : 'Landlord'} Sign Up</h2>
+          <h2 className="text-3xl font-black text-slate-900 tracking-tight">{role === UserRole.TENANT ? 'Tenant' : 'Landlord'} Sign Up</h2>
           <p className="text-xs text-slate-400 font-bold uppercase tracking-widest">Create a secure housing account</p>
         </div>
 
