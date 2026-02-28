@@ -3,6 +3,7 @@ import { getAuth, GoogleAuthProvider } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 import { getAnalytics, isSupported } from "firebase/analytics";
+import { initializeAppCheck, ReCaptchaEnterpriseProvider } from "firebase/app-check";
 
 // YOUR SECURE CONFIG
 const firebaseConfig = {
@@ -23,6 +24,22 @@ try {
 } catch (e) {
   console.log("App initialization skipped or handled:", e);
   app = getApp();
+}
+
+// APP CHECK (reCAPTCHA Enterprise)
+if (typeof window !== 'undefined') {
+  // Use the site key from .env
+  const siteKey = import.meta.env.VITE_RECAPTCHA_SITE_KEY;
+
+  if (siteKey) {
+    initializeAppCheck(app, {
+      provider: new ReCaptchaEnterpriseProvider(siteKey),
+      isTokenAutoRefreshEnabled: true
+    });
+    console.log("🛡️ App Check initialized with reCAPTCHA Enterprise");
+  } else {
+    console.warn("⚠️ App Check skip: VITE_RECAPTCHA_SITE_KEY missing in .env");
+  }
 }
 
 // GET SERVICES
