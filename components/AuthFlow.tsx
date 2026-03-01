@@ -1,4 +1,4 @@
-
+// Build trigger: re-rendering reCAPTCHA checkbox fix
 import React, { useState } from 'react';
 import { UserRole, User } from '../types';
 import { auth, googleProvider } from '../firebase';
