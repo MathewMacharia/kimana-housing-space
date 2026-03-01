@@ -24,6 +24,7 @@ const AuthFlow: React.FC<AuthFlowProps> = ({ onAuthenticated, logoUrl }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
 
   // Auto-render reCAPTCHA checkbox
   React.useEffect(() => {
@@ -33,7 +34,9 @@ const AuthFlow: React.FC<AuthFlowProps> = ({ onAuthenticated, logoUrl }) => {
         const container = document.getElementById('recaptcha-container');
         if (container && container.innerHTML === '') {
           grecaptcha.enterprise.render('recaptcha-container', {
-            sitekey: import.meta.env.VITE_RECAPTCHA_SITE_KEY
+            sitekey: import.meta.env.VITE_RECAPTCHA_SITE_KEY,
+            callback: (token: string) => setCaptchaToken(token),
+            'expired-callback': () => setCaptchaToken(null)
           });
         }
       });
@@ -109,6 +112,11 @@ const AuthFlow: React.FC<AuthFlowProps> = ({ onAuthenticated, logoUrl }) => {
       return;
     }
 
+    if (!captchaToken) {
+      alert("Please complete the 'I'm not a robot' verification 🛡️");
+      return;
+    }
+
     setIsLoading(true);
 
     try {
@@ -151,6 +159,11 @@ const AuthFlow: React.FC<AuthFlowProps> = ({ onAuthenticated, logoUrl }) => {
     e.preventDefault();
     if (!loginData.identifier || !loginData.password) {
       alert('Please enter your credentials');
+      return;
+    }
+
+    if (!captchaToken) {
+      alert("Please complete the 'I'm not a robot' verification 🛡️");
       return;
     }
 
