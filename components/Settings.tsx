@@ -80,23 +80,29 @@ const Settings: React.FC<SettingsProps> = ({
     const file = e.target.files?.[0];
     if (!file) return;
 
+    // Validate file size (e.g., 2MB limit)
+    if (file.size > 2 * 1024 * 1024) {
+      alert("Image size must be less than 2MB");
+      return;
+    }
+
     setIsUpdating(true);
     const reader = new FileReader();
     reader.onloadend = async () => {
       const base64 = reader.result as string;
       try {
-        const url = await FirebaseService.uploadPropertyImage(`logos/${currentUser.id}`, base64);
+        // Updated path to 'profile_pictures' folder as requested
+        const url = await FirebaseService.uploadPropertyImage(`profile_pictures/${currentUser.id}`, base64);
         const updatedUser = { ...currentUser, logoUrl: url };
         await FirebaseService.saveUserProfile(updatedUser);
 
-        if (currentUser.role === UserRole.LANDLORD) {
-          await FirebaseService.updateGlobalSettings({ logoUrl: url });
-        }
+        // REMOVED: updateGlobalSettings call. Profile pics should NOT change the app branding.
 
         onUpdateUser(updatedUser);
-        alert("Logo updated successfully!");
-      } catch (err) {
-        alert("Logo upload failed.");
+        alert("Profile picture updated successfully!");
+      } catch (err: any) {
+        console.error("Upload error:", err);
+        alert(err.message || "Profile picture upload failed. Please try again.");
       } finally {
         setIsUpdating(false);
       }
@@ -229,7 +235,7 @@ const Settings: React.FC<SettingsProps> = ({
       <div className="text-center mb-8">
         <div className="w-20 h-20 bg-blue-600 rounded-3xl mx-auto flex items-center justify-center text-white text-3xl shadow-xl shadow-blue-100 dark:shadow-blue-900/20 relative group overflow-hidden">
           {currentUser.logoUrl ? (
-            <img src={currentUser.logoUrl} alt="Logo" className="w-full h-full object-cover" />
+            <img src={currentUser.logoUrl} alt="Profile Picture" className="w-full h-full object-cover" />
           ) : (
             <i className={`fas ${currentUser.role === UserRole.LANDLORD ? 'fa-user-tie' : 'fa-user'}`}></i>
           )}
