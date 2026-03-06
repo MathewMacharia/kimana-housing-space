@@ -231,15 +231,8 @@ const AuthFlow: React.FC<AuthFlowProps> = ({ onAuthenticated, logoUrl }) => {
   if (step === 'welcome') {
     return (
       <div className="min-h-screen bg-white flex flex-col items-center justify-center p-6 text-center animate-in fade-in duration-500">
-        <div className="w-24 h-24 bg-blue-600 rounded-2xl flex items-center justify-center text-white text-4xl mb-6 shadow-xl relative overflow-hidden">
-          {logoUrl ? (
-            <img src={logoUrl} alt="Logo" className="w-full h-full object-cover" />
-          ) : (
-            <i className="fas fa-house-chimney"></i>
-          )}
-          <div className="absolute -bottom-2 -right-2 bg-green-500 w-8 h-8 rounded-full border-4 border-white flex items-center justify-center text-[10px]">
-            <i className="fas fa-shield-alt"></i>
-          </div>
+        <div className="w-32 h-32 flex items-center justify-center relative overflow-hidden mb-6">
+          <img src={logoUrl || "/logo.png"} alt="Logo" className="w-full h-full object-contain" />
         </div>
         <h1 className="text-3xl font-black text-slate-900 mb-2 tracking-tight">Masqani Poa</h1>
         <p className="text-slate-500 mb-8 max-w-xs text-sm font-medium">Connecting landlords and tenants with <span className="text-blue-600 font-bold">Secure Marketplace</span> technology.</p>

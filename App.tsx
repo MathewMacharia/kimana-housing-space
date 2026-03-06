@@ -424,8 +424,8 @@ const App: React.FC = () => {
     <div className="min-h-screen pb-24 bg-slate-50 dark:bg-slate-950 transition-colors">
       <header className="sticky top-0 z-30 bg-white/80 dark:bg-slate-950/80 backdrop-blur-md px-4 py-3 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 bg-blue-600 rounded-xl flex items-center justify-center text-white shadow-lg overflow-hidden">
-            {globalLogo ? <img src={globalLogo} alt="Logo" className="w-full h-full object-cover" /> : <i className="fas fa-house-chimney"></i>}
+          <div className="w-12 flex items-center justify-center overflow-hidden">
+            <img src={globalLogo || "/logo.png"} alt="Logo" className="w-full h-full object-contain" />
           </div>
           <h1 className="text-sm font-black text-slate-800 dark:text-slate-100 uppercase tracking-tight">Masqani Poa</h1>
         </div>

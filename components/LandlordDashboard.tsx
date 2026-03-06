@@ -264,8 +264,8 @@ const LandlordDashboard: React.FC<LandlordDashboardProps> = ({
         </button>
       )) : (
         <div className="py-20 text-center bg-white dark:bg-slate-900 rounded-[2.5rem] border-2 border-dashed border-slate-100 dark:border-slate-800">
-          <div className="w-16 h-16 bg-slate-50 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-200 text-2xl">
-            <i className="fas fa-house-chimney-user"></i>
+          <div className="w-20 h-20 flex items-center justify-center mx-auto mb-4 overflow-hidden">
+            <img src="/logo.png" alt="Logo" className="w-full h-full object-contain" />
           </div>
           <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest">No assets listed yet</p>
           <button onClick={handleOpenAddForm} className="mt-4 text-blue-600 font-black text-[10px] uppercase tracking-widest">Start Management</button>
