@@ -102,10 +102,11 @@ const AuthFlow: React.FC<AuthFlowProps> = ({ onAuthenticated, logoUrl }) => {
     e.preventDefault();
     const { fullName, phone, email, password, confirmPassword } = signupData;
 
-    if (!fullName || !phone || !email || !password || !confirmPassword) {
-      alert('Please fill in all fields');
-      return;
-    }
+    if (!fullName) { alert('Please enter your Full Name'); return; }
+    if (!phone) { alert('Please enter your Phone Number'); return; }
+    if (!email) { alert('Please enter your Email Address'); return; }
+    if (!password) { alert('Please enter your Secure Password'); return; }
+    if (!confirmPassword) { alert('Please enter your Confirm Password'); return; }
 
     if (password !== confirmPassword) {
       alert('Passwords do not match!');
@@ -302,7 +303,7 @@ const AuthFlow: React.FC<AuthFlowProps> = ({ onAuthenticated, logoUrl }) => {
           </div>
 
           <div id="recaptcha-container" className="my-2 flex justify-center scale-90 sm:scale-100"></div>
-
+          <p className="text-[8px] text-center text-slate-400 font-bold uppercase tracking-[0.2em] mt-2 mb-4">Build v2.3 - 2026.03.08 Active</p>
           <button type="submit" disabled={isLoading} className="w-full py-5 bg-blue-600 text-white font-black rounded-2xl shadow-xl active:scale-95 transition-all flex items-center justify-center gap-2 uppercase text-xs tracking-widest mt-4">
             {isLoading ? <i className="fas fa-circle-notch animate-spin"></i> : `Join as ${role}`}
           </button>
