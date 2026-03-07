@@ -9,6 +9,10 @@ import {
   addDoc,
   onSnapshot,
   query,
+  limit,
+  orderBy,
+  startAfter,
+  QueryDocumentSnapshot,
   Timestamp
 } from "firebase/firestore";
 import { ref, uploadString, getDownloadURL } from "firebase/storage";
@@ -125,7 +129,8 @@ export const FirebaseService = {
   subscribeToListings(callback: (listings: Listing[]) => void): () => void {
     if (!db) return () => { };
     const listingsRef = collection(db, "listings");
-    const q = query(listingsRef);
+    // Sort by dateListed as the default ordering for pagination consistency
+    const q = query(listingsRef, orderBy("dateListed", "desc"), limit(50));
 
     return onSnapshot(q, (snapshot) => {
       const allListings = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Listing));
@@ -133,6 +138,28 @@ export const FirebaseService = {
     }, (error) => {
       console.error("Firestore subscribeToListings error:", error);
     });
+  },
+
+  async getPaginatedListings(pageSize: number = 20, lastVisibleDoc?: QueryDocumentSnapshot): Promise<{ listings: Listing[], lastDoc: QueryDocumentSnapshot | null }> {
+    try {
+      if (!db) return { listings: [], lastDoc: null };
+      const listingsRef = collection(db, "listings");
+
+      let q = query(listingsRef, orderBy("dateListed", "desc"), limit(pageSize));
+
+      if (lastVisibleDoc) {
+        q = query(listingsRef, orderBy("dateListed", "desc"), startAfter(lastVisibleDoc), limit(pageSize));
+      }
+
+      const querySnapshot = await getDocs(q);
+      const listings = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Listing));
+      const lastDoc = querySnapshot.docs[querySnapshot.docs.length - 1] || null;
+
+      return { listings, lastDoc };
+    } catch (e: any) {
+      console.error("Firestore getPaginatedListings failed:", e);
+      throw e;
+    }
   },
 
   async createListing(listing: Omit<Listing, 'id'>): Promise<string> {

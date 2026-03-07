@@ -2,6 +2,8 @@
 import React, { useState, useRef } from 'react';
 import { Listing, Review, UnitType, UserRole } from '../types';
 import { UNLOCK_FEE_STANDARD, UNLOCK_FEE_AIRBNB, UNLOCK_FEE_BUSINESS, UNLOCK_FEE_SHORT_STAY } from '../constants';
+import { FirebaseService } from '../services/db';
+import { User } from '../types';
 
 interface ListingDetailProps {
   listing: Listing;
@@ -20,7 +22,41 @@ const ListingDetail: React.FC<ListingDetailProps> = ({
   const [newRating, setNewRating] = useState(5);
   const [newComment, setNewComment] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [landlordInfo, setLandlordInfo] = useState<{ name: string, phone: string, email: string } | null>(
+    (listing.landlordName && listing.landlordPhone) ? {
+      name: listing.landlordName,
+      phone: listing.landlordPhone,
+      email: listing.landlordEmail || ''
+    } : null
+  );
+  const [isLoadingLandlord, setIsLoadingLandlord] = useState(false);
   const galleryRef = useRef<HTMLDivElement>(null);
+
+  const isLandlordOfThis = currentUser?.role === UserRole.LANDLORD && listing.landlordId === currentUser.id;
+  const canSeeContact = isUnlocked || isLandlordOfThis;
+
+  React.useEffect(() => {
+    if (canSeeContact && !landlordInfo && !isLoadingLandlord) {
+      const fetchLandlord = async () => {
+        setIsLoadingLandlord(true);
+        try {
+          const profile = await FirebaseService.getUserProfile(listing.landlordId);
+          if (profile) {
+            setLandlordInfo({
+              name: profile.name,
+              phone: profile.phone,
+              email: profile.email
+            });
+          }
+        } catch (error) {
+          console.error("Failed to fetch landlord contact:", error);
+        } finally {
+          setIsLoadingLandlord(false);
+        }
+      };
+      fetchLandlord();
+    }
+  }, [canSeeContact, landlordInfo, listing.landlordId, isLoadingLandlord]);
 
   const getUnlockFee = () => {
     if (listing.unitType === UnitType.AIRBNB ||
@@ -31,8 +67,6 @@ const ListingDetail: React.FC<ListingDetailProps> = ({
   };
 
   const unlockFee = getUnlockFee();
-  const isLandlordOfThis = currentUser?.role === UserRole.LANDLORD && listing.landlordId === currentUser.id;
-  const canSeeContact = isUnlocked || isLandlordOfThis;
 
   const publicTitle = `${listing.unitType} in ${listing.locationName}`;
   const displayTitle = canSeeContact ? (listing.buildingName ? `${listing.title} - ${listing.buildingName}` : listing.title) : publicTitle;
@@ -241,22 +275,34 @@ const ListingDetail: React.FC<ListingDetailProps> = ({
 
               <div className="space-y-1">
                 <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest ml-1">Contact Person</p>
-                <h4 className="font-black text-slate-800 dark:text-slate-100">{listing.landlordName}</h4>
+                {isLoadingLandlord ? (
+                  <p className="text-xs font-bold text-blue-600 animate-pulse">Fetching contact details...</p>
+                ) : (
+                  <h4 className="font-black text-slate-800 dark:text-slate-100">{landlordInfo?.name || listing.landlordName || "Contact Landlord"}</h4>
+                )}
               </div>
 
               <div className="space-y-3">
-                <a href={`tel:${listing.landlordPhone}`} className="flex items-center justify-between p-5 bg-white dark:bg-slate-800 rounded-2xl border border-green-100 dark:border-green-900/30 shadow-sm active:scale-98 transition-all">
-                  <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-xl bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 flex items-center justify-center"><i className="fas fa-phone-alt"></i></div>
-                    <div><p className="text-[8px] text-slate-400 font-black uppercase tracking-widest">Call Now</p><p className="text-sm font-black text-slate-800 dark:text-slate-100 tracking-tight">{listing.landlordPhone}</p></div>
+                {landlordInfo?.phone ? (
+                  <a href={`tel:${landlordInfo.phone}`} className="flex items-center justify-between p-5 bg-white dark:bg-slate-800 rounded-2xl border border-green-100 dark:border-green-900/30 shadow-sm active:scale-98 transition-all">
+                    <div className="flex items-center gap-4">
+                      <div className="w-10 h-10 rounded-xl bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 flex items-center justify-center"><i className="fas fa-phone-alt"></i></div>
+                      <div><p className="text-[8px] text-slate-400 font-black uppercase tracking-widest">Call Now</p><p className="text-sm font-black text-slate-800 dark:text-slate-100 tracking-tight">{landlordInfo.phone}</p></div>
+                    </div>
+                  </a>
+                ) : (
+                  <div className="p-4 bg-yellow-50 dark:bg-yellow-900/10 rounded-xl text-[10px] font-bold text-yellow-700 dark:text-yellow-400">
+                    Phone contact unavailable. Please message through app.
                   </div>
-                </a>
-                <a href={`mailto:${listing.landlordEmail}`} className="flex items-center justify-between p-5 bg-white dark:bg-slate-800 rounded-2xl border border-green-100 dark:border-green-900/30 shadow-sm active:scale-98 transition-all">
-                  <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-xl bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 flex items-center justify-center"><i className="fas fa-envelope"></i></div>
-                    <div><p className="text-[8px] text-slate-400 font-black uppercase tracking-widest">Email Landlord</p><p className="text-sm font-black text-slate-800 dark:text-slate-100 tracking-tight">{listing.landlordEmail}</p></div>
-                  </div>
-                </a>
+                )}
+                {landlordInfo?.email && (
+                  <a href={`mailto:${landlordInfo.email}`} className="flex items-center justify-between p-5 bg-white dark:bg-slate-800 rounded-2xl border border-green-100 dark:border-green-900/30 shadow-sm active:scale-98 transition-all">
+                    <div className="flex items-center gap-4">
+                      <div className="w-10 h-10 rounded-xl bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 flex items-center justify-center"><i className="fas fa-envelope"></i></div>
+                      <div><p className="text-[8px] text-slate-400 font-black uppercase tracking-widest">Email Landlord</p><p className="text-sm font-black text-slate-800 dark:text-slate-100 tracking-tight">{landlordInfo.email}</p></div>
+                    </div>
+                  </a>
+                )}
               </div>
             </div>
           )}

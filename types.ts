@@ -44,9 +44,9 @@ export interface Listing {
   distanceFromTown: number;
   photos: string[];
   isVacant: boolean;
-  landlordName: string;
-  landlordPhone: string;
-  landlordEmail: string;
+  landlordName?: string;
+  landlordPhone?: string;
+  landlordEmail?: string;
   isVerified: boolean;
   reviews: Review[];
   dateListed: string;

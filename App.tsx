@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
+import { QueryDocumentSnapshot } from 'firebase/firestore';
 import { User, UserRole, Listing, UnitType, Review } from './types';
 import { UNLOCK_FEE_STANDARD, UNLOCK_FEE_AIRBNB, UNLOCK_FEE_BUSINESS, UNLOCK_FEE_SHORT_STAY, MOCK_LISTINGS, LOCATIONS_HIERARCHY } from './constants';
 import ListingCard from './components/ListingCard';
@@ -25,7 +26,10 @@ const App: React.FC = () => {
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<UnitType | 'all'>('all');
   const [listings, setListings] = useState<Listing[]>([]);
+  const [lastVisible, setLastVisible] = useState<QueryDocumentSnapshot | null>(null);
+  const [hasMore, setHasMore] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [isOfflineMode, setIsOfflineMode] = useState(false);
   const [isAuthChecking, setIsAuthChecking] = useState(true);
   const [exploringTown, setExploringTown] = useState<'Kimana' | 'Loitokitok' | 'Illasit' | 'Simba Cement' | null>(null);
@@ -131,25 +135,55 @@ const App: React.FC = () => {
     }
   }, [currentUser, isAuthChecking, loadData]);
 
-  // Real-time synchronization for listings
-  useEffect(() => {
-    if (isAuthChecking) return;
-
-    console.log("Setting up real-time listings subscription...");
-    const unsubscribe = FirebaseService.subscribeToListings((fetchedListings) => {
-      if (fetchedListings && fetchedListings.length > 0) {
-        setListings(fetchedListings);
+  // Paginated listing fetch
+  const fetchInitialListings = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const { listings: newListings, lastDoc } = await FirebaseService.getPaginatedListings(20);
+      if (newListings.length > 0) {
+        setListings(newListings);
+        setLastVisible(lastDoc);
+        setHasMore(newListings.length === 20);
         setIsOfflineMode(false);
-      } else if (listings.length === 0) {
-        // Fallback to mocks ONLY if database is truly empty and no state exists
+      } else {
         setListings(MOCK_LISTINGS);
         setIsOfflineMode(true);
+        setHasMore(false);
       }
+    } catch (error) {
+      console.error("Fetch listings error:", error);
+      setListings(MOCK_LISTINGS);
+      setIsOfflineMode(true);
+    } finally {
       setIsLoading(false);
-    });
+    }
+  }, []);
 
-    return () => unsubscribe();
-  }, [isAuthChecking]);
+  const loadMoreListings = async () => {
+    if (!hasMore || isLoadingMore || !lastVisible) return;
+
+    setIsLoadingMore(true);
+    try {
+      const { listings: newListings, lastDoc } = await FirebaseService.getPaginatedListings(20, lastVisible);
+      if (newListings.length > 0) {
+        setListings(prev => [...prev, ...newListings]);
+        setLastVisible(lastDoc);
+        setHasMore(newListings.length === 20);
+      } else {
+        setHasMore(false);
+      }
+    } catch (error) {
+      console.error("Load more error:", error);
+    } finally {
+      setIsLoadingMore(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!isAuthChecking) {
+      fetchInitialListings();
+    }
+  }, [isAuthChecking, fetchInitialListings]);
 
   // Robust filtering logic to handle both boolean and string truthiness
   const isListingVacant = useCallback((l: Listing) => {
@@ -255,6 +289,19 @@ const App: React.FC = () => {
               </div>
             )}
           </div>
+
+          {hasMore && !searchQuery && filterType === 'all' && !vacantOnly && (
+            <div className="flex justify-center mt-8 pb-4">
+              <button
+                onClick={loadMoreListings}
+                disabled={isLoadingMore}
+                className="px-8 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl text-[10px] font-black uppercase tracking-widest text-blue-600 shadow-sm active:scale-95 transition-all flex items-center gap-2"
+              >
+                {isLoadingMore ? <i className="fas fa-circle-notch animate-spin"></i> : <i className="fas fa-plus-circle"></i>}
+                {isLoadingMore ? 'Loading Assets...' : 'Load More Assets'}
+              </button>
+            </div>
+          )}
         </div>
       );
     }
