@@ -280,7 +280,13 @@ const App: React.FC = () => {
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {filteredListings.map(listing => (
-              <ListingCard key={listing.id} listing={listing} onClick={() => setSelectedListing(listing)} />
+              <ListingCard
+                key={listing.id}
+                listing={listing}
+                onClick={() => setSelectedListing(listing)}
+                isFavorite={currentUser?.favorites?.includes(listing.id) || false}
+                onToggleFavorite={() => handleToggleFavorite(listing.id)}
+              />
             ))}
             {filteredListings.length === 0 && (
               <div className="col-span-full py-12 text-center bg-white dark:bg-slate-900 rounded-3xl border border-dashed border-slate-200 dark:border-slate-800">
@@ -325,7 +331,14 @@ const App: React.FC = () => {
           </div>
           <div className="flex gap-4 overflow-x-auto no-scrollbar snap-x snap-mandatory -mx-4 px-4 pb-2">
             {businessListings.map(l => (
-              <ListingCard key={l.id} listing={l} variant="horizontal" onClick={() => setSelectedListing(l)} />
+              <ListingCard
+                key={l.id}
+                listing={l}
+                variant="horizontal"
+                onClick={() => setSelectedListing(l)}
+                isFavorite={currentUser?.favorites?.includes(l.id) || false}
+                onToggleFavorite={() => handleToggleFavorite(l.id)}
+              />
             ))}
           </div>
         </section>
@@ -342,7 +355,14 @@ const App: React.FC = () => {
           </div>
           <div className="flex gap-4 overflow-x-auto no-scrollbar snap-x snap-mandatory -mx-4 px-4 pb-2">
             {residentialListings.map(l => (
-              <ListingCard key={l.id} listing={l} variant="horizontal" onClick={() => setSelectedListing(l)} />
+              <ListingCard
+                key={l.id}
+                listing={l}
+                variant="horizontal"
+                onClick={() => setSelectedListing(l)}
+                isFavorite={currentUser?.favorites?.includes(l.id) || false}
+                onToggleFavorite={() => handleToggleFavorite(l.id)}
+              />
             ))}
           </div>
         </section>
@@ -419,6 +439,16 @@ const App: React.FC = () => {
     );
   };
 
+  const handleToggleFavorite = async (listingId: string) => {
+    if (!currentUser) return;
+    try {
+      const newFavorites = await FirebaseService.toggleFavorite(currentUser, listingId);
+      setCurrentUser({ ...currentUser, favorites: newFavorites });
+    } catch (e) {
+      console.error("Toggle favorite failed:", e);
+    }
+  };
+
   const renderMainContent = () => {
     if (activeTab === 'profile') {
       return <Settings currentUser={currentUser!} onLogout={handleLogout} onUpdateUser={setCurrentUser} isDarkMode={isDarkMode} setIsDarkMode={setIsDarkMode} language={language} setLanguage={setLanguage} t={t} />;
@@ -426,6 +456,43 @@ const App: React.FC = () => {
 
     if (activeTab === 'search') {
       return renderExploreContent();
+    }
+
+    if (activeTab === 'listings') {
+      const savedListings = listings.filter(l => currentUser?.favorites?.includes(l.id));
+      return (
+        <div className="space-y-6 animate-in fade-in slide-in-from-bottom duration-500">
+          <div className="mb-2">
+            <h2 className="text-2xl font-black text-slate-800 dark:text-slate-100 tracking-tight flex items-center gap-3">
+              <i className="fas fa-heart text-blue-600"></i> {t('saved')}
+            </h2>
+            <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mt-1">Your bookmarked properties</p>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {savedListings.map(listing => (
+              <ListingCard
+                key={listing.id}
+                listing={listing}
+                onClick={() => setSelectedListing(listing)}
+                isFavorite={true}
+                onToggleFavorite={() => handleToggleFavorite(listing.id)}
+              />
+            ))}
+            {savedListings.length === 0 && (
+              <div className="col-span-full py-20 text-center bg-white dark:bg-slate-900 rounded-[2.5rem] border border-dashed border-slate-200 dark:border-slate-800">
+                <div className="w-16 h-16 bg-slate-50 dark:bg-slate-800 rounded-2xl flex items-center justify-center text-slate-300 mx-auto mb-4">
+                  <i className="far fa-heart text-2xl"></i>
+                </div>
+                <h3 className="text-sm font-black text-slate-600 dark:text-slate-300 uppercase tracking-tight">No Saved Assets</h3>
+                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">Heart a property to see it here</p>
+                <button onClick={() => setActiveTab('home')} className="mt-6 px-6 py-2.5 bg-blue-600 text-white text-[10px] font-black rounded-xl uppercase tracking-widest active:scale-95 transition-all">
+                  Explore Market
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      );
     }
 
     if (currentUser?.role === UserRole.LANDLORD) {
@@ -460,6 +527,8 @@ const App: React.FC = () => {
           isUnlocked={currentUser?.unlockedListings.includes(selectedListing.id) || false}
           currentUser={currentUser!}
           onAddReview={handleAddReview}
+          isFavorite={currentUser?.favorites?.includes(selectedListing.id) || false}
+          onToggleFavorite={() => handleToggleFavorite(selectedListing.id)}
         />
       );
     }

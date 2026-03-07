@@ -24,6 +24,9 @@ import {
 } from "firebase/auth";
 import { User, Listing, UserRole } from "../types";
 
+// Throttling state for expensive operations
+let lastRevealTime = 0;
+
 export const FirebaseService = {
   // User Profile Management
   async saveUserProfile(user: User): Promise<void> {
@@ -228,6 +231,34 @@ export const FirebaseService = {
     }
   },
 
+  async toggleFavorite(user: User, listingId: string): Promise<string[]> {
+    try {
+      if (!db || !auth.currentUser) throw new Error("Authentication required");
+
+      const favorites = [...(user.favorites || [])];
+      const index = favorites.indexOf(listingId);
+
+      if (index === -1) {
+        favorites.push(listingId);
+      } else {
+        favorites.splice(index, 1);
+      }
+
+      const collectionName = user.role === UserRole.LANDLORD ? "landlords" : "tenants";
+      const userRef = doc(db, collectionName, user.id);
+
+      await updateDoc(userRef, {
+        favorites: favorites,
+        updatedAt: Timestamp.now()
+      });
+
+      return favorites;
+    } catch (e) {
+      console.error("Firestore toggleFavorite failed:", e);
+      throw e;
+    }
+  },
+
   // Global Settings (Logo, etc)
   async getGlobalSettings(): Promise<any> {
     try {
@@ -261,12 +292,44 @@ export const FirebaseService = {
   // Secure Infrastructure (Phase 3)
   async revealLandlordContact(listingId: string): Promise<{ name: string, phone: string, email: string }> {
     try {
+      // Client-side rate limiting (3 second cooldown)
+      const now = Date.now();
+      if (now - lastRevealTime < 3000) {
+        throw new Error("Please wait a moment before trying again.");
+      }
+      lastRevealTime = now;
+
       const revealFunc = httpsCallable(functions, 'revealContact');
       const result = await revealFunc({ listingId });
       return result.data as { name: string, phone: string, email: string };
     } catch (e: any) {
       console.error("Cloud Function revealContact failed:", e);
       throw e;
+    }
+  },
+
+  // Advanced Scaling (SWR/Caching)
+  getCachedListings(): Listing[] {
+    try {
+      const cached = localStorage.getItem("masqani_listings_cache");
+      return cached ? JSON.parse(cached) : [];
+    } catch (e) {
+      return [];
+    }
+  },
+
+  async getListingsWithSWR(callback: (listings: Listing[]) => void): Promise<void> {
+    // 1. Return cached data immediately
+    const cached = this.getCachedListings();
+    if (cached.length > 0) callback(cached);
+
+    // 2. Fetch fresh data and update cache
+    try {
+      const freshListings = await this.getListings();
+      localStorage.setItem("masqani_listings_cache", JSON.stringify(freshListings));
+      callback(freshListings);
+    } catch (e) {
+      console.error("SWR update failed:", e);
     }
   }
 };

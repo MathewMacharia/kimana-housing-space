@@ -47,7 +47,7 @@ if (typeof window !== 'undefined') {
 const auth = getAuth(app);
 const db = getFirestore(app);
 const storage = getStorage(app);
-const functions = getFunctions(app, "us-central1"); // Force us-central1 as it is the default for callable functions in many regions
+const functions = getFunctions(app, "us-central1");
 const googleProvider = new GoogleAuthProvider();
 
 // Analytics is optional and can fail in some environments
@@ -55,6 +55,6 @@ isSupported().then(supported => {
   if (supported) getAnalytics(app);
 });
 
-console.log("✅ Firebase Auth, Firestore & Storage Registered via GSTATIC 10.8.0");
+console.log("✅ Firebase Services (including Cloud Functions) Registered");
 
-export { app, auth, db, storage, googleProvider };
+export { app, auth, db, storage, functions, googleProvider, httpsCallable };

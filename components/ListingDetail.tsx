@@ -152,7 +152,7 @@ const ListingDetail: React.FC<ListingDetailProps> = ({
           <button onClick={handleShare} className="w-10 h-10 flex items-center justify-center rounded-full bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-400 active:scale-90 transition-transform">
             <i className="fas fa-share-alt"></i>
           </button>
-          <button onClick={onToggleFavorite} className={`w-10 h-10 flex items-center justify-center rounded-full transition-all active:scale-90 ${isFavorite ? 'bg-red-50 dark:bg-red-900/20 text-red-500' : 'bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-400'}`}>
+          <button onClick={onToggleFavorite} className={`w-10 h-10 flex items-center justify-center rounded-full transition-all active:scale-90 ${isFavorite ? 'bg-blue-600 text-white shadow-lg shadow-blue-100 dark:shadow-none' : 'bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-400'}`}>
             <i className={`${isFavorite ? 'fas' : 'far'} fa-heart`}></i>
           </button>
         </div>

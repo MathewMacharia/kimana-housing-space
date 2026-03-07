@@ -6,9 +6,17 @@ interface ListingCardProps {
   listing: Listing;
   onClick: () => void;
   variant?: 'grid' | 'horizontal';
+  isFavorite?: boolean;
+  onToggleFavorite?: () => void;
 }
 
-const ListingCard: React.FC<ListingCardProps> = ({ listing, onClick, variant = 'grid' }) => {
+const ListingCard: React.FC<ListingCardProps> = ({
+  listing,
+  onClick,
+  variant = 'grid',
+  isFavorite,
+  onToggleFavorite
+}) => {
   const containerClass = variant === 'horizontal'
     ? 'w-72 flex-shrink-0 snap-start'
     : 'w-full';
@@ -17,7 +25,7 @@ const ListingCard: React.FC<ListingCardProps> = ({ listing, onClick, variant = '
   const dateLabel = daysAgo === 0 ? 'Added Today' : `${daysAgo}d ago`;
 
   return (
-    <div onClick={onClick} className={`${containerClass} bg-white dark:bg-slate-900 rounded-3xl overflow-hidden shadow-sm border border-slate-100 dark:border-slate-800 active:scale-[0.98] transition-all cursor-pointer group`}>
+    <div onClick={onClick} className={`${containerClass} bg-white dark:bg-slate-900 rounded-3xl overflow-hidden shadow-sm border border-slate-100 dark:border-slate-800 active:scale-[0.98] transition-all cursor-pointer group relative`}>
       <div className="relative h-48 overflow-hidden bg-slate-200 dark:bg-slate-800">
         <img src={listing.photos[0]} alt={listing.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
         <div className="absolute top-3 left-3 flex gap-2">
@@ -28,6 +36,18 @@ const ListingCard: React.FC<ListingCardProps> = ({ listing, onClick, variant = '
             {dateLabel}
           </div>
         </div>
+
+        {onToggleFavorite && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleFavorite();
+            }}
+            className={`absolute top-3 right-3 w-8 h-8 rounded-full flex items-center justify-center transition-all active:scale-90 shadow-lg ${isFavorite ? 'bg-blue-600 text-white' : 'bg-white/90 dark:bg-slate-900/90 text-slate-400'}`}
+          >
+            <i className={`${isFavorite ? 'fas' : 'far'} fa-heart text-[10px]`}></i>
+          </button>
+        )}
 
         <div className="absolute bottom-0 left-0 right-0 h-1/2 bg-gradient-to-t from-black/60 to-transparent"></div>
         <div className="absolute bottom-3 left-3 text-white">
@@ -53,5 +73,4 @@ const ListingCard: React.FC<ListingCardProps> = ({ listing, onClick, variant = '
     </div>
   );
 };
-
 export default ListingCard;

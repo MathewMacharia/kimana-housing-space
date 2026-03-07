@@ -3,6 +3,10 @@
         {
             "source": "functions",
             "codebase": "default",
+            "region": [
+                "us-central1",
+                "europe-west1"
+            ],
             "ignore": [
                 "node_modules",
                 ".git",
@@ -17,5 +21,30 @@
     },
     "storage": {
         "rules": "storage.rules"
+    },
+    "hosting": {
+        "public": "dist",
+        "ignore": [
+            "firebase.json",
+            "**/.*",
+            "**/node_modules/**"
+        ],
+        "headers": [
+            {
+                "source": "/(logo.png|favicon.ico|.*\\.(webp|jpg|png|svg|woff2))$",
+                "headers": [
+                    {
+                        "key": "Cache-Control",
+                        "value": "public, max-age=31536000, immutable"
+                    }
+                ]
+            }
+        ],
+        "rewrites": [
+            {
+                "source": "**",
+                "destination": "/index.html"
+            }
+        ]
     }
 }
