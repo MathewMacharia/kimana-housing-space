@@ -22,6 +22,7 @@ const App: React.FC = () => {
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [isSupportModalOpen, setIsSupportModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<UnitType | 'all'>('all');
   const [listings, setListings] = useState<Listing[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -30,6 +31,14 @@ const App: React.FC = () => {
   const [exploringTown, setExploringTown] = useState<'Kimana' | 'Loitokitok' | 'Illasit' | 'Simba Cement' | null>(null);
   const [vacantOnly, setVacantOnly] = useState(false);
   const [globalLogo, setGlobalLogo] = useState<string | null>(null);
+
+  // Debounce search query to prevent laggy typing
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, 300);
+    return () => clearTimeout(handler);
+  }, [searchQuery]);
 
   const [isDarkMode, setIsDarkMode] = useState(() => localStorage.getItem('theme') === 'dark');
   const [language, setLanguage] = useState<Locale>(() => (localStorage.getItem('language') as Locale) || 'EN');
@@ -143,14 +152,14 @@ const App: React.FC = () => {
   }, [isAuthChecking]);
 
   // Robust filtering logic to handle both boolean and string truthiness
-  const isListingVacant = (l: Listing) => {
+  const isListingVacant = useCallback((l: Listing) => {
     const val = l.isVacant as unknown as string | boolean;
     return val === true || val === 'true';
-  };
+  }, []);
 
-  const filteredListings = listings.filter(l => {
-    const searchLower = searchQuery.toLowerCase();
-    const matchesSearch = !searchQuery ||
+  const filteredListings = React.useMemo(() => listings.filter(l => {
+    const searchLower = debouncedSearchQuery.toLowerCase();
+    const matchesSearch = !debouncedSearchQuery ||
       l.title.toLowerCase().includes(searchLower) ||
       l.locationName.toLowerCase().includes(searchLower) ||
       l.unitType.toLowerCase().includes(searchLower) ||
@@ -160,10 +169,17 @@ const App: React.FC = () => {
     const matchesVacant = !vacantOnly || isListingVacant(l);
 
     return matchesSearch && matchesType && matchesVacant;
-  });
+  }), [listings, debouncedSearchQuery, filterType, vacantOnly, isListingVacant]);
 
-  const businessListings = listings.filter(l => l.unitType === UnitType.BUSINESS_HOUSE && (!vacantOnly || isListingVacant(l)));
-  const residentialListings = listings.filter(l => l.unitType !== UnitType.BUSINESS_HOUSE && (!vacantOnly || isListingVacant(l)));
+  const businessListings = React.useMemo(() =>
+    listings.filter(l => l.unitType === UnitType.BUSINESS_HOUSE && (!vacantOnly || isListingVacant(l))),
+    [listings, vacantOnly, isListingVacant]
+  );
+
+  const residentialListings = React.useMemo(() =>
+    listings.filter(l => l.unitType !== UnitType.BUSINESS_HOUSE && (!vacantOnly || isListingVacant(l))),
+    [listings, vacantOnly, isListingVacant]
+  );
 
   const handleAuthenticated = (user: User) => setCurrentUser(user);
   const handleLogout = async () => {

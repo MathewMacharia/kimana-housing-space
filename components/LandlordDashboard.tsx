@@ -5,6 +5,7 @@ import { LISTING_FEE_STANDARD, LISTING_FEE_AIRBNB_MONTHLY, LISTING_FEE_BUSINESS,
 import PaymentModal from './PaymentModal';
 import { FirebaseService } from '../services/db';
 import { refineDescription } from '../services/geminiService';
+import { ImageUtils } from '../services/imageUtils';
 
 interface LandlordDashboardProps {
   listings: Listing[];
@@ -104,24 +105,19 @@ const LandlordDashboard: React.FC<LandlordDashboardProps> = ({
     setIsUploading(true);
     try {
       const uploadPromises = Array.from(files).map(async (file: File) => {
-        return new Promise<string>((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = async () => {
-            try {
-              const base64 = reader.result as string;
-              // Upload to Firebase Storage immediately
-              const downloadUrl = await FirebaseService.uploadPropertyImage(
-                `listings/${landlordId}/${Date.now()}-${file.name}`,
-                base64
-              );
-              resolve(downloadUrl);
-            } catch (err) {
-              reject(err);
-            }
-          };
-          reader.onerror = reject;
-          reader.readAsDataURL(file);
-        });
+        try {
+          const compressedFile = await ImageUtils.compressImage(file);
+          const base64 = await ImageUtils.fileToBase64(compressedFile);
+
+          // Upload to Firebase Storage immediately
+          return await FirebaseService.uploadPropertyImage(
+            `listings/${landlordId}/${Date.now()}-${file.name.split('.')[0]}.webp`,
+            base64
+          );
+        } catch (err) {
+          console.error("Single image upload failed", err);
+          throw err;
+        }
       });
 
       const uploadedUrls = await Promise.all(uploadPromises);

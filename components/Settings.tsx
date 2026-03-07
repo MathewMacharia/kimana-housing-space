@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { User, UserRole } from '../types';
 import { FirebaseService } from '../services/db';
+import { ImageUtils } from '../services/imageUtils';
 import { Locale } from '../translations';
 
 interface SettingsProps {
