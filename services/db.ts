@@ -16,7 +16,7 @@ import {
   Timestamp
 } from "firebase/firestore";
 import { ref, uploadString, getDownloadURL } from "firebase/storage";
-import { db, storage, auth } from "../firebase";
+import { db, storage, auth, functions, httpsCallable } from "../firebase";
 import {
   updateProfile,
   verifyBeforeUpdateEmail,
@@ -254,6 +254,18 @@ export const FirebaseService = {
       }, { merge: true });
     } catch (e) {
       console.error("Firestore updateGlobalSettings failed:", e);
+      throw e;
+    }
+  },
+
+  // Secure Infrastructure (Phase 3)
+  async revealLandlordContact(listingId: string): Promise<{ name: string, phone: string, email: string }> {
+    try {
+      const revealFunc = httpsCallable(functions, 'revealContact');
+      const result = await revealFunc({ listingId });
+      return result.data as { name: string, phone: string, email: string };
+    } catch (e: any) {
+      console.error("Cloud Function revealContact failed:", e);
       throw e;
     }
   }

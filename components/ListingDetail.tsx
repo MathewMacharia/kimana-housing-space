@@ -40,23 +40,20 @@ const ListingDetail: React.FC<ListingDetailProps> = ({
       const fetchLandlord = async () => {
         setIsLoadingLandlord(true);
         try {
-          const profile = await FirebaseService.getUserProfile(listing.landlordId);
-          if (profile) {
-            setLandlordInfo({
-              name: profile.name,
-              phone: profile.phone,
-              email: profile.email
-            });
+          // PHASE 3: Use secure Cloud Function for contact reveal
+          const contact = await FirebaseService.revealLandlordContact(listing.id);
+          if (contact) {
+            setLandlordInfo(contact);
           }
         } catch (error) {
-          console.error("Failed to fetch landlord contact:", error);
+          console.error("Failed to reveal landlord contact:", error);
         } finally {
           setIsLoadingLandlord(false);
         }
       };
       fetchLandlord();
     }
-  }, [canSeeContact, landlordInfo, listing.landlordId, isLoadingLandlord]);
+  }, [canSeeContact, landlordInfo, listing.id, isLoadingLandlord]);
 
   const getUnlockFee = () => {
     if (listing.unitType === UnitType.AIRBNB ||
