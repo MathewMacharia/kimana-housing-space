@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Masqani Poa</title>
+    <link rel="icon" type="image/png" href="/logo.png">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                },
+            },
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+
+        /* Ensure all typed input is black */
+        input,
+        textarea,
+        select {
+            color: black !important;
+        }
+
+        .dark input,
+        .dark textarea,
+        .dark select {
+            color: black !important;
+        }
+
+        /* Smooth transitions for theme switching */
+        * {
+            transition: background-color 0.2s ease-in-out, border-color 0.2s ease-in-out;
+        }
+    </style>
+  <script type="module" crossorigin src="/assets/index-FWkH5Bwa.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/index-DpEbz2eb.css">
+</head>
+
+<body class="bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100">
+    <div id="root"></div>
+</body>
+
+</html>

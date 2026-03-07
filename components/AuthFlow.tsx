@@ -283,7 +283,7 @@ const AuthFlow: React.FC<AuthFlowProps> = ({ onAuthenticated, logoUrl }) => {
 
           <div className="space-y-1">
             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Phone Number</label>
-            <input required type="tel" placeholder="07xxxxxxxx" className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none font-bold text-sm" value={signupData.phone} onChange={e => setSignupData({ ...signupData, phone: e.target.value })} />
+            <input required type="tel" placeholder="07xxxxxxxx" className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none font-bold text-sm text-black" value={signupData.phone} onChange={e => setSignupData({ ...signupData, phone: e.target.value })} />
           </div>
 
           <div className="space-y-1">
@@ -294,6 +294,11 @@ const AuthFlow: React.FC<AuthFlowProps> = ({ onAuthenticated, logoUrl }) => {
           <div className="space-y-1 text-slate-900">
             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Secure Password</label>
             <input required type="password" placeholder="••••••••" className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none font-bold text-sm text-black" value={signupData.password} onChange={e => setSignupData({ ...signupData, password: e.target.value })} />
+          </div>
+
+          <div className="space-y-1 text-slate-900">
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Confirm Password</label>
+            <input required type="password" placeholder="••••••••" className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none font-bold text-sm text-black" value={signupData.confirmPassword} onChange={e => setSignupData({ ...signupData, confirmPassword: e.target.value })} />
           </div>
 
           <div id="recaptcha-container" className="my-2 flex justify-center scale-90 sm:scale-100"></div>
