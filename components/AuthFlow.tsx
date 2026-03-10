@@ -253,13 +253,14 @@ const AuthFlow: React.FC<AuthFlowProps> = ({ onAuthenticated, logoUrl }) => {
             {isLoading ? <i className="fas fa-circle-notch animate-spin"></i> : <><i className="fab fa-google text-red-500"></i> Google Login</>}
           </button>
 
-          <div className="pt-4">
+        <div className="pt-4">
             <button onClick={() => setStep('login')}
               className="text-blue-600 font-black text-[10px] uppercase tracking-widest"
             >
               Already have an account? Log In
             </button>
           </div>
+          <p className="text-[8px] text-center text-slate-400 font-bold uppercase tracking-[0.2em] mt-4">Build v2.5 - 2026.03.10 Deployment</p>
         </div>
       </div>
     );
@@ -352,6 +353,7 @@ const AuthFlow: React.FC<AuthFlowProps> = ({ onAuthenticated, logoUrl }) => {
               {isLoading ? <i className="fas fa-circle-notch animate-spin"></i> : <><i className="fab fa-google text-red-500"></i> Google Login</>}
             </button>
           </form>
+          <p className="text-[8px] text-center text-slate-400 font-bold uppercase tracking-[0.2em] mt-8">Build v2.5 - 2026.03.10 Deployment</p>
         </div>
       </div>
     );
