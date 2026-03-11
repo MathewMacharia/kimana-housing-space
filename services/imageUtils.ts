@@ -7,7 +7,7 @@ export const ImageUtils = {
      */
     async compressImage(file: File, maxWidthOrHeight = 1024): Promise<File> {
         const options = {
-            maxSizeMB: 0.8, // Aim for under 800KB
+            maxSizeMB: 5.0, // Increased to 5MB to avoid failures with high-quality images
             maxWidthOrHeight: maxWidthOrHeight,
             useWebWorker: true,
             fileType: 'image/webp', // Convert to WebP for better compression

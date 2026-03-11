@@ -102,6 +102,13 @@ const LandlordDashboard: React.FC<LandlordDashboardProps> = ({
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
+    const currentPhotosCount = currentFormListing.photos?.length || 0;
+    if (currentPhotosCount + files.length > 8) {
+      alert(`Policy: You can only upload a maximum of 8 photos. You have already uploaded ${currentPhotosCount}, and you're trying to add ${files.length} more.`);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
+
     setIsUploading(true);
     try {
       const uploadPromises = Array.from(files).map(async (file: File) => {
@@ -165,8 +172,8 @@ const LandlordDashboard: React.FC<LandlordDashboardProps> = ({
     e.preventDefault();
     const photosCount = currentFormListing.photos?.length || 0;
 
-    if (photosCount < 8 && !isEditing) {
-      alert(`Security Policy: Please upload at least 8 images from different angles to ensure tenant trust. (Current: ${photosCount}/8)`);
+    if (photosCount < 4 && !isEditing) {
+      alert(`Security Policy: Please upload at least 4 images from different angles to ensure tenant trust. (Current: ${photosCount}/4)`);
       return;
     }
 
@@ -454,7 +461,7 @@ const LandlordDashboard: React.FC<LandlordDashboardProps> = ({
 
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Gallery ({currentFormListing.photos?.length || 0}/8 Required)</label>
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Gallery ({currentFormListing.photos?.length || 0} / 4-8 allowed)</label>
                   <button type="button" onClick={() => fileInputRef.current?.click()}
                     className="text-[10px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-widest flex items-center gap-2 bg-blue-50 dark:bg-blue-900/30 px-3 py-1.5 rounded-full"
                   >
