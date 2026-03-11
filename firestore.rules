@@ -19,17 +19,19 @@ service cloud.firestore {
     // 2. Tenants: Users can only read/write their own profiles
     match /tenants/{userId} {
       allow read: if request.auth != null && request.auth.uid == userId;
-      allow write: if request.auth != null && request.auth.uid == userId && (
-        resource == null || isNotSpamming()
-      );
+      allow create: if request.auth != null && request.auth.uid == userId;
+      allow update: if request.auth != null && request.auth.uid == userId && (
+        request.resource.data.role == resource.data.role
+      ) && isNotSpamming();
     }
     
     // 3. Landlords: Users can only read/write their own profiles
     match /landlords/{userId} {
       allow read: if request.auth != null && request.auth.uid == userId;
-      allow write: if request.auth != null && request.auth.uid == userId && (
-        resource == null || isNotSpamming()
-      );
+      allow create: if request.auth != null && request.auth.uid == userId;
+      allow update: if request.auth != null && request.auth.uid == userId && (
+        request.resource.data.role == resource.data.role
+      ) && isNotSpamming();
     }
     
     // 4. Global Settings: Anyone can read, only authorized admins (or any auth for now) can write
