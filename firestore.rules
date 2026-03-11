@@ -8,11 +8,11 @@ service cloud.firestore {
 
     // Helper to check if the user is a designated administrator
     function isAdmin() {
-      return request.auth != null && request.auth.uid in [
-        "YvnDqe9fu1aTbtGIphpD3o6wrDm2",
-        "VLgz2b4BMGXO3YKQpcYVSMmnEhp1",
-        "J8IvG9FDWvRFCFGyjUqMIrELIWk2"
-      ];
+      return request.auth != null && (
+        request.auth.uid == "YvnDqe9fu1aTbtGIphpD3o6wrDm2" ||
+        request.auth.uid == "VLgz2b4BMGXO3YKQpcYVSMmnEhp1" ||
+        request.auth.uid == "J8IvG9FDWvRFCFGyjUqMIrELIWk2"
+      );
     }
 
     // 1. Listings: Anyone can read, only authenticated landlords can create/update their own
