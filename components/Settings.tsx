@@ -16,6 +16,12 @@ interface SettingsProps {
   t: (key: string) => string;
 }
 
+const ADMIN_UIDS = [
+  "YvnDqe9fu1aTbtGIphpD3o6wrDm2",
+  "VLgz2b4BMGXO3YKQpcYVSMmnEhp1",
+  "J8IvG9FDWvRFCFGyjUqMIrELIWk2"
+];
+
 const SettingRow: React.FC<{
   icon: string;
   label: string;
@@ -47,7 +53,8 @@ const SectionTitle: React.FC<React.PropsWithChildren<{}>> = ({ children }) => (
 const Settings: React.FC<SettingsProps> = ({
   currentUser, onLogout, onUpdateUser, isDarkMode, setIsDarkMode, language, setLanguage, t
 }) => {
-  const [activeModule, setActiveModule] = useState<'main' | 'personal' | 'security' | 'preferences'>('main');
+  const [activeModule, setActiveModule] = useState<'main' | 'personal' | 'security' | 'preferences' | 'admin_logo'>('main');
+  const isAdmin = ADMIN_UIDS.includes(currentUser.id);
   const [isUpdating, setIsUpdating] = useState(false);
   const [formData, setFormData] = useState({
     name: currentUser.name,
@@ -231,6 +238,65 @@ const Settings: React.FC<SettingsProps> = ({
     );
   }
 
+  if (activeModule === 'admin_logo') {
+    return (
+      <div className="animate-in slide-in-from-right duration-300">
+        <button onClick={() => setActiveModule('main')} className="mb-6 flex items-center gap-2 text-slate-400 font-bold uppercase text-[10px] tracking-widest active:scale-95 transition-transform">
+          <i className="fas fa-arrow-left"></i> BACK TO SETTINGS
+        </button>
+
+        <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 shadow-xl shadow-slate-100 dark:shadow-none">
+          <div className="flex items-center gap-5 mb-10">
+            <div className="w-16 h-16 bg-blue-50 dark:bg-blue-900/20 rounded-2xl flex items-center justify-center text-blue-600 dark:text-blue-400 text-2xl shadow-sm">
+              <i className="fas fa-palette"></i>
+            </div>
+            <div>
+              <h3 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">Brand Identity</h3>
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-0.5">UPDATE APP LOGO</p>
+            </div>
+          </div>
+
+          <div className="space-y-6">
+            <p className="text-xs text-slate-500 font-medium">This logo will be displayed at the top of the app for all users. High quality PNG or SVG recommended.</p>
+            
+            <button
+              onClick={() => {
+                const input = document.createElement('input');
+                input.type = 'file';
+                input.accept = 'image/*';
+                input.onchange = async (e: any) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  
+                  setIsUpdating(true);
+                  const reader = new FileReader();
+                  reader.onloadend = async () => {
+                    const base64 = reader.result as string;
+                    try {
+                      const url = await FirebaseService.uploadPropertyImage(`branding/logo`, base64);
+                      await FirebaseService.updateGlobalSettings({ logoUrl: url });
+                      alert("App logo updated successfully! Reload to see changes.");
+                    } catch (err: any) {
+                      alert("Logo update failed: " + err.message);
+                    } finally {
+                      setIsUpdating(false);
+                    }
+                  };
+                  reader.readAsDataURL(file);
+                };
+                input.click();
+              }}
+              disabled={isUpdating}
+              className="w-full py-5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-black rounded-3xl text-sm uppercase tracking-widest active:scale-95 transition-all shadow-xl flex items-center justify-center gap-3"
+            >
+              {isUpdating ? <i className="fas fa-circle-notch animate-spin"></i> : <><i className="fas fa-upload"></i> UPLOAD NEW LOGO</>}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="animate-in fade-in slide-in-from-bottom duration-500 pb-10">
       <div className="text-center mb-8">
@@ -258,6 +324,13 @@ const Settings: React.FC<SettingsProps> = ({
         <>
           <SectionTitle>Account Control</SectionTitle>
           <SettingRow icon="fa-user" label={t('switchRoleTenant')} color="amber" onClick={handleToggleRole} />
+        </>
+      )}
+
+      {isAdmin && (
+        <>
+          <SectionTitle>Admin Controls</SectionTitle>
+          <SettingRow icon="fa-shield-halved" label="Global Brand Identity" sublabel="App Logo & Branding" color="blue" onClick={() => setActiveModule('admin_logo')} />
         </>
       )}
 
