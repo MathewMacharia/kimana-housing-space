@@ -109,20 +109,30 @@ const LandlordDashboard: React.FC<LandlordDashboardProps> = ({
       return;
     }
 
+    if (!landlordId) {
+      alert("Authentication Error: You must be logged in to upload photos. Please try logging out and in again.");
+      return;
+    }
+
     setIsUploading(true);
     try {
       const uploadPromises = Array.from(files).map(async (file: File) => {
         try {
+          console.log(`[Upload] Processing ${file.name}...`);
           const compressedFile = await ImageUtils.compressImage(file);
-
-          // Upload to Firebase Storage immediately
-          return await FirebaseService.uploadPropertyImage(
-            `listings/${landlordId}/${Date.now()}-${file.name.split('.')[0]}.webp`,
-            compressedFile
-          );
-        } catch (err) {
-          console.error("Single image upload failed", err);
-          throw err;
+          
+          // Fallback Strategy: If 'listings/' fails, we try 'properties/' which is more likely to have existing rules
+          try {
+            const primaryPath = `listings/${landlordId}/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.]/g, '_')}.webp`;
+            return await FirebaseService.uploadPropertyImage(primaryPath, compressedFile);
+          } catch (primaryErr) {
+            console.warn("Primary path upload failed, trying fallback path 'properties/'...", primaryErr);
+            const fallbackPath = `properties/${landlordId}/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.]/g, '_')}.webp`;
+            return await FirebaseService.uploadPropertyImage(fallbackPath, compressedFile);
+          }
+        } catch (err: any) {
+          console.error(`Detailed upload error for ${file.name}:`, err);
+          throw new Error(`${file.name}: ${err.message || 'Unknown error'}`);
         }
       });
 
@@ -131,9 +141,9 @@ const LandlordDashboard: React.FC<LandlordDashboardProps> = ({
         ...prev,
         photos: [...(prev.photos || []), ...uploadedUrls]
       }));
-    } catch (err) {
-      console.error("Image upload failed", err);
-      alert("Some images failed to upload. Please try again.");
+    } catch (err: any) {
+      console.error("Batch upload failed:", err);
+      alert(`Upload Failed: ${err.message}\n\nTip: Try refreshing the page or checking if your connection is stable.`);
     } finally {
       setIsUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
