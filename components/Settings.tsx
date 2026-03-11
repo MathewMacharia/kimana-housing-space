@@ -53,7 +53,7 @@ const SectionTitle: React.FC<React.PropsWithChildren<{}>> = ({ children }) => (
 const Settings: React.FC<SettingsProps> = ({
   currentUser, onLogout, onUpdateUser, isDarkMode, setIsDarkMode, language, setLanguage, t
 }) => {
-  const [activeModule, setActiveModule] = useState<'main' | 'personal' | 'security' | 'preferences' | 'admin_branding'>('main');
+  const [activeModule, setActiveModule] = useState<'main' | 'personal' | 'security' | 'preferences' | 'admin_logo'>('main');
   const isAdmin = ADMIN_UIDS.includes(currentUser.id);
   const [isUpdating, setIsUpdating] = useState(false);
   const [formData, setFormData] = useState({
@@ -238,41 +238,26 @@ const Settings: React.FC<SettingsProps> = ({
     );
   }
 
-  const handleFontChange = async (font: string) => {
-    try {
-      setIsUpdating(true);
-      await FirebaseService.updateGlobalSettings({ fontFamily: font });
-      document.documentElement.style.setProperty('--app-font', `'${font}', sans-serif`);
-      localStorage.setItem('global_font', font);
-      alert(`Font updated to ${font} successfully!`);
-    } catch (err: any) {
-      alert("Font update failed: " + err.message);
-    } finally {
-      setIsUpdating(false);
-    }
-  };
-
-  if (activeModule === 'admin_branding') {
+  if (activeModule === 'admin_logo') {
     return (
       <div className="animate-in slide-in-from-right duration-300">
         <button onClick={() => setActiveModule('main')} className="mb-6 flex items-center gap-2 text-slate-400 font-bold uppercase text-[10px] tracking-widest active:scale-95 transition-transform">
           <i className="fas fa-arrow-left"></i> BACK TO SETTINGS
         </button>
 
-        <div className="space-y-6">
-          {/* Logo Section */}
-          <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 shadow-xl shadow-slate-100 dark:shadow-none">
-            <div className="flex items-center gap-5 mb-10">
-              <div className="w-16 h-16 bg-blue-50 dark:bg-blue-900/20 rounded-2xl flex items-center justify-center text-blue-600 dark:text-blue-400 text-2xl shadow-sm">
-                <i className="fas fa-image"></i>
-              </div>
-              <div>
-                <h3 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">App Logo</h3>
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-0.5">UPDATE BRAND LOGO</p>
-              </div>
+        <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 shadow-xl shadow-slate-100 dark:shadow-none">
+          <div className="flex items-center gap-5 mb-10">
+            <div className="w-16 h-16 bg-blue-50 dark:bg-blue-900/20 rounded-2xl flex items-center justify-center text-blue-600 dark:text-blue-400 text-2xl shadow-sm">
+              <i className="fas fa-palette"></i>
             </div>
+            <div>
+              <h3 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">Brand Identity</h3>
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-0.5">UPDATE APP LOGO</p>
+            </div>
+          </div>
 
-            <p className="text-xs text-slate-500 font-medium mb-6">This logo will be displayed at the top of the app for all users.</p>
+          <div className="space-y-6">
+            <p className="text-xs text-slate-500 font-medium">This logo will be displayed at the top of the app for all users. High quality PNG or SVG recommended.</p>
             
             <button
               onClick={() => {
@@ -306,50 +291,6 @@ const Settings: React.FC<SettingsProps> = ({
             >
               {isUpdating ? <i className="fas fa-circle-notch animate-spin"></i> : <><i className="fas fa-upload"></i> UPLOAD NEW LOGO</>}
             </button>
-          </div>
-
-          {/* Font Section */}
-          <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 shadow-xl shadow-slate-100 dark:shadow-none">
-            <div className="flex items-center gap-5 mb-10">
-              <div className="w-16 h-16 bg-indigo-50 dark:bg-indigo-900/20 rounded-2xl flex items-center justify-center text-indigo-600 dark:text-indigo-400 text-2xl shadow-sm">
-                <i className="fas fa-font"></i>
-              </div>
-              <div>
-                <h3 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">Typography</h3>
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-0.5">SELECT GLOBAL FONT</p>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 gap-3">
-              {[
-                { name: 'Inter', family: 'Inter' },
-                { name: 'Poppins', family: 'Poppins' },
-                { name: 'Montserrat', family: 'Montserrat' },
-                { name: 'Overpass', family: 'Overpass' }
-              ].map((font) => (
-                <button
-                  key={font.family}
-                  onClick={() => handleFontChange(font.family)}
-                  disabled={isUpdating}
-                  className={`p-5 rounded-2xl border-2 transition-all text-left flex items-center justify-between group active:scale-[0.98] ${
-                    localStorage.getItem('global_font') === font.family 
-                    ? 'border-blue-600 bg-blue-50/50 dark:bg-blue-900/20' 
-                    : 'border-slate-100 dark:border-slate-800 hover:border-blue-200 dark:hover:border-blue-900/40'
-                  }`}
-                  style={{ fontFamily: font.family }}
-                >
-                  <span className="text-lg font-bold text-slate-900 dark:text-white">{font.name}</span>
-                  <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors ${
-                    localStorage.getItem('global_font') === font.family 
-                    ? 'border-blue-600 bg-blue-600 text-white' 
-                    : 'border-slate-200 dark:border-slate-700'
-                  }`}>
-                    {localStorage.getItem('global_font') === font.family && <i className="fas fa-check text-[10px]"></i>}
-                  </div>
-                </button>
-              ))}
-            </div>
-            <p className="mt-6 text-[10px] text-slate-400 font-bold uppercase tracking-widest text-center">Changes reflect immediately for all users</p>
           </div>
         </div>
       </div>
@@ -389,7 +330,7 @@ const Settings: React.FC<SettingsProps> = ({
       {isAdmin && (
         <>
           <SectionTitle>Admin Controls</SectionTitle>
-          <SettingRow icon="fa-shield-halved" label="Global Brand Identity" sublabel="Logo & Fonts" color="blue" onClick={() => setActiveModule('admin_branding')} />
+          <SettingRow icon="fa-shield-halved" label="Global Brand Identity" sublabel="App Logo & Branding" color="blue" onClick={() => setActiveModule('admin_logo')} />
         </>
       )}
 

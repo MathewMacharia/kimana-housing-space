@@ -7,14 +7,9 @@
 @tailwind utilities;
 
 :root {
-  --app-font: 'Inter', sans-serif;
   --foreground-rgb: 0, 0, 0;
   --background-start-rgb: 214, 219, 220;
   --background-end-rgb: 255, 255, 255;
-}
-
-body {
-  font-family: var(--app-font);
 }
 
 @media (prefers-color-scheme: dark) {
