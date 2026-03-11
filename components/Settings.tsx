@@ -88,34 +88,27 @@ const Settings: React.FC<SettingsProps> = ({
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Validate file size (e.g., 2MB limit)
-    if (file.size > 2 * 1024 * 1024) {
-      alert("Image size must be less than 2MB");
+    // Validate file size (e.g., 5MB limit)
+    if (file.size > 5 * 1024 * 1024) {
+      alert("Image size must be less than 5MB");
       return;
     }
 
     setIsUpdating(true);
-    const reader = new FileReader();
-    reader.onloadend = async () => {
-      const base64 = reader.result as string;
-      try {
-        // Updated path to 'profile_pictures' folder as requested
-        const url = await FirebaseService.uploadPropertyImage(`profile_pictures/${currentUser.id}`, base64);
-        const updatedUser = { ...currentUser, logoUrl: url };
-        await FirebaseService.saveUserProfile(updatedUser);
+    try {
+      // Updated path to 'profile_pictures' folder as requested
+      const url = await FirebaseService.uploadPropertyImage(`profile_pictures/${currentUser.id}`, file);
+      const updatedUser = { ...currentUser, logoUrl: url };
+      await FirebaseService.saveUserProfile(updatedUser);
 
-        // REMOVED: updateGlobalSettings call. Profile pics should NOT change the app branding.
-
-        onUpdateUser(updatedUser);
-        alert("Profile picture updated successfully!");
-      } catch (err: any) {
-        console.error("Upload error:", err);
-        alert(err.message || "Profile picture upload failed. Please try again.");
-      } finally {
-        setIsUpdating(false);
-      }
-    };
-    reader.readAsDataURL(file);
+      onUpdateUser(updatedUser);
+      alert("Profile picture updated successfully!");
+    } catch (err: any) {
+      console.error("Upload error:", err);
+      alert(err.message || "Profile picture upload failed. Please try again.");
+    } finally {
+      setIsUpdating(false);
+    }
   };
 
   const handleToggleRole = async () => {
@@ -269,20 +262,15 @@ const Settings: React.FC<SettingsProps> = ({
                   if (!file) return;
                   
                   setIsUpdating(true);
-                  const reader = new FileReader();
-                  reader.onloadend = async () => {
-                    const base64 = reader.result as string;
-                    try {
-                      const url = await FirebaseService.uploadPropertyImage(`branding/logo`, base64);
-                      await FirebaseService.updateGlobalSettings({ logoUrl: url });
-                      alert("App logo updated successfully! Reload to see changes.");
-                    } catch (err: any) {
-                      alert("Logo update failed: " + err.message);
-                    } finally {
-                      setIsUpdating(false);
-                    }
-                  };
-                  reader.readAsDataURL(file);
+                  try {
+                    const url = await FirebaseService.uploadPropertyImage(`branding/logo`, file);
+                    await FirebaseService.updateGlobalSettings({ logoUrl: url });
+                    alert("App logo updated successfully! Reload to see changes.");
+                  } catch (err: any) {
+                    alert("Logo update failed: " + err.message);
+                  } finally {
+                    setIsUpdating(false);
+                  }
                 };
                 input.click();
               }}

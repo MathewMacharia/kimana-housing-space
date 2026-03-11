@@ -15,7 +15,7 @@ import {
   QueryDocumentSnapshot,
   Timestamp
 } from "firebase/firestore";
-import { ref, uploadString, getDownloadURL } from "firebase/storage";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { db, storage, auth, functions, httpsCallable } from "../firebase";
 import {
   updateProfile,
@@ -195,13 +195,11 @@ export const FirebaseService = {
   },
 
   // Image Storage
-  async uploadPropertyImage(path: string, base64Data: string): Promise<string> {
+  async uploadPropertyImage(path: string, data: Blob | File): Promise<string> {
     try {
       if (!storage || !auth.currentUser) throw new Error("Storage requires an active session");
       const storageRef = ref(storage, path);
-      // Clean up base64 data to remove data:image/... prefix if present
-      const cleanData = base64Data.includes(",") ? base64Data.split(",")[1] : base64Data;
-      await uploadString(storageRef, cleanData, 'base64');
+      await uploadBytes(storageRef, data);
       return await getDownloadURL(storageRef);
     } catch (e) {
       console.error("Firebase Storage upload failed:", e);

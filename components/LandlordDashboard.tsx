@@ -114,12 +114,11 @@ const LandlordDashboard: React.FC<LandlordDashboardProps> = ({
       const uploadPromises = Array.from(files).map(async (file: File) => {
         try {
           const compressedFile = await ImageUtils.compressImage(file);
-          const base64 = await ImageUtils.fileToBase64(compressedFile);
 
           // Upload to Firebase Storage immediately
           return await FirebaseService.uploadPropertyImage(
             `listings/${landlordId}/${Date.now()}-${file.name.split('.')[0]}.webp`,
-            base64
+            compressedFile
           );
         } catch (err) {
           console.error("Single image upload failed", err);
