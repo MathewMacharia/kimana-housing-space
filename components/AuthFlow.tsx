@@ -260,7 +260,7 @@ const AuthFlow: React.FC<AuthFlowProps> = ({ onAuthenticated, logoUrl }) => {
               Already have an account? Log In
             </button>
           </div>
-          <p className="text-[8px] text-center text-slate-400 font-bold uppercase tracking-[0.2em] mt-4">Build v2.5 - 2026.03.10 Deployment</p>
+          <p className="text-[8px] text-center text-slate-400 font-bold uppercase tracking-[0.2em] mt-8">Build v2.6 - 2026.03.11 Deployment</p>
         </div>
       </div>
     );
