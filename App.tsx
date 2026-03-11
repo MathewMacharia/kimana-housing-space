@@ -35,6 +35,7 @@ const App: React.FC = () => {
   const [exploringTown, setExploringTown] = useState<'Kimana' | 'Loitokitok' | 'Illasit' | 'Simba Cement' | null>(null);
   const [vacantOnly, setVacantOnly] = useState(false);
   const [globalLogo, setGlobalLogo] = useState<string | null>(null);
+  const [globalFont, setGlobalFont] = useState<string>(() => localStorage.getItem('global_font') || 'Inter');
 
   // Debounce search query to prevent laggy typing
   useEffect(() => {
@@ -50,6 +51,12 @@ const App: React.FC = () => {
   useEffect(() => {
     const cachedLogo = localStorage.getItem('global_logo');
     if (cachedLogo) setGlobalLogo(cachedLogo);
+    
+    const cachedFont = localStorage.getItem('global_font');
+    if (cachedFont) {
+      setGlobalFont(cachedFont);
+      document.documentElement.style.setProperty('--app-font', `'${cachedFont}', sans-serif`);
+    }
   }, []);
 
   const t = (key: string) => TRANSLATIONS[language][key] || key;
@@ -75,6 +82,11 @@ const App: React.FC = () => {
       if (settings?.logoUrl) {
         setGlobalLogo(settings.logoUrl);
         localStorage.setItem('global_logo', settings.logoUrl);
+      }
+      if (settings?.fontFamily) {
+        setGlobalFont(settings.fontFamily);
+        localStorage.setItem('global_font', settings.fontFamily);
+        document.documentElement.style.setProperty('--app-font', `'${settings.fontFamily}', sans-serif`);
       }
     } catch (error: any) {
       console.error("Failed to load global settings:", error);
