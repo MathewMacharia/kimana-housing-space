@@ -14,10 +14,11 @@ interface ListingDetailProps {
   onAddReview?: (review: Review) => void;
   onToggleFavorite?: () => void;
   isFavorite?: boolean;
+  onRequireAuth?: () => void;
 }
 
 const ListingDetail: React.FC<ListingDetailProps> = ({
-  listing, onBack, onUnlock, isUnlocked, currentUser, onAddReview, onToggleFavorite, isFavorite
+  listing, onBack, onUnlock, isUnlocked, currentUser, onAddReview, onToggleFavorite, isFavorite, onRequireAuth
 }) => {
   const [newRating, setNewRating] = useState(5);
   const [newComment, setNewComment] = useState('');
@@ -228,7 +229,7 @@ const ListingDetail: React.FC<ListingDetailProps> = ({
 
         <div className="px-1">
           {!canSeeContact ? (
-            currentUser?.role === UserRole.TENANT ? (
+            (!currentUser || currentUser.role === UserRole.TENANT) ? (
               <div className="bg-white dark:bg-slate-900 border-2 border-blue-600 dark:border-blue-500 rounded-[2.5rem] p-8 text-center space-y-6 shadow-2xl shadow-blue-50 dark:shadow-none relative overflow-hidden">
                 <div className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center text-white text-2xl mx-auto shadow-xl">
                   <i className="fas fa-lock"></i>
@@ -337,7 +338,14 @@ const ListingDetail: React.FC<ListingDetailProps> = ({
             )}
           </div>
 
-          {currentUser?.role === UserRole.TENANT && (
+          {!currentUser ? (
+            <div className="mt-6 p-6 text-center bg-slate-50 dark:bg-slate-900 rounded-[2rem] border border-dashed border-slate-200 dark:border-slate-800">
+              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-3">Want to share your experience?</p>
+              <button onClick={onRequireAuth} className="px-6 py-2 bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 font-black rounded-xl text-[10px] uppercase tracking-widest shadow-sm border border-slate-100 dark:border-slate-700 active:scale-95 transition-all">
+                Log In to Review
+              </button>
+            </div>
+          ) : currentUser.role === UserRole.TENANT ? (
             <div className="mt-6 p-6 bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-sm">
               <h4 className="text-xs font-black text-slate-800 dark:text-slate-100 uppercase tracking-widest mb-4">Add your review</h4>
               <form onSubmit={handleAddReviewSubmit} className="space-y-4">
@@ -357,7 +365,7 @@ const ListingDetail: React.FC<ListingDetailProps> = ({
                 </button>
               </form>
             </div>
-          )}
+          ) : null}
         </div>
       </div>
     </div>

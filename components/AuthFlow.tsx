@@ -251,16 +251,14 @@ const AuthFlow: React.FC<AuthFlowProps> = ({ onAuthenticated, logoUrl }) => {
             className="w-full py-4 border-2 border-slate-100 text-slate-700 font-bold rounded-2xl active:scale-95 transition-transform flex items-center justify-center gap-3 text-sm uppercase tracking-widest"
           >
             {isLoading ? <i className="fas fa-circle-notch animate-spin"></i> : <><i className="fab fa-google text-red-500"></i> Google Login</>}
-          </button>
-
-        <div className="pt-4">
+                  <div className="pt-4">
             <button onClick={() => setStep('login')}
               className="text-blue-600 font-black text-[10px] uppercase tracking-widest"
             >
               Already have an account? Log In
             </button>
           </div>
-          <p className="text-[8px] text-center text-slate-400 font-bold uppercase tracking-[0.2em] mt-8">Build v3.0 - 2026.03.11 Diagnostic Build</p>
+          <p className="text-[8px] text-center text-slate-400 font-bold uppercase tracking-[0.2em] mt-8">Build v3.1 - 2026.03.11 Public Market</p>
         </div>
       </div>
     );
@@ -304,7 +302,7 @@ const AuthFlow: React.FC<AuthFlowProps> = ({ onAuthenticated, logoUrl }) => {
           </div>
 
           <div id="recaptcha-container" className="my-2 flex justify-center scale-90 sm:scale-100"></div>
-          <p className="text-[8px] text-center text-slate-400 font-bold uppercase tracking-[0.2em] mt-2 mb-4">Build v2.5 - 2026.03.10 Deployment</p>
+          <p className="text-[8px] text-center text-slate-400 font-bold uppercase tracking-[0.2em] mt-2 mb-4">Build v3.1 - 2026.03.11 Public Market</p>
           <button type="submit" disabled={isLoading} className="w-full py-5 bg-blue-600 text-white font-black rounded-2xl shadow-xl active:scale-95 transition-all flex items-center justify-center gap-2 uppercase text-xs tracking-widest mt-4">
             {isLoading ? <i className="fas fa-circle-notch animate-spin"></i> : `Join as ${role}`}
           </button>
@@ -353,7 +351,7 @@ const AuthFlow: React.FC<AuthFlowProps> = ({ onAuthenticated, logoUrl }) => {
               {isLoading ? <i className="fas fa-circle-notch animate-spin"></i> : <><i className="fab fa-google text-red-500"></i> Google Login</>}
             </button>
           </form>
-          <p className="text-[8px] text-center text-slate-400 font-bold uppercase tracking-[0.2em] mt-8">Build v2.5 - 2026.03.10 Deployment</p>
+          <p className="text-[8px] text-center text-slate-400 font-bold uppercase tracking-[0.2em] mt-8">Build v3.1 - 2026.03.11 Public Market</p>
         </div>
       </div>
     );

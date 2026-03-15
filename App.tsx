@@ -251,10 +251,6 @@ const App: React.FC = () => {
     );
   }
 
-  if (!currentUser) {
-    return <AuthFlow onAuthenticated={handleAuthenticated} logoUrl={globalLogo} />;
-  }
-
   const renderHomeContent = () => {
     if (isLoading) {
       return (
@@ -440,7 +436,11 @@ const App: React.FC = () => {
   };
 
   const handleToggleFavorite = async (listingId: string) => {
-    if (!currentUser) return;
+    if (!currentUser) {
+      alert("Please log in or create an account to save properties to your favorites.");
+      setActiveTab('profile');
+      return;
+    }
     try {
       const newFavorites = await FirebaseService.toggleFavorite(currentUser, listingId);
       setCurrentUser({ ...currentUser, favorites: newFavorites });
@@ -451,7 +451,10 @@ const App: React.FC = () => {
 
   const renderMainContent = () => {
     if (activeTab === 'profile') {
-      return <Settings currentUser={currentUser!} onLogout={handleLogout} onUpdateUser={setCurrentUser} isDarkMode={isDarkMode} setIsDarkMode={setIsDarkMode} language={language} setLanguage={setLanguage} t={t} />;
+      if (!currentUser) {
+        return <AuthFlow onAuthenticated={handleAuthenticated} logoUrl={globalLogo} />;
+      }
+      return <Settings currentUser={currentUser} onLogout={handleLogout} onUpdateUser={setCurrentUser} isDarkMode={isDarkMode} setIsDarkMode={setIsDarkMode} language={language} setLanguage={setLanguage} t={t} />;
     }
 
     if (activeTab === 'search') {
@@ -459,6 +462,20 @@ const App: React.FC = () => {
     }
 
     if (activeTab === 'listings') {
+      if (!currentUser) {
+        return (
+          <div className="flex flex-col items-center justify-center py-32 text-center animate-in fade-in duration-500">
+            <div className="w-20 h-20 bg-blue-50 dark:bg-blue-900/20 rounded-full flex items-center justify-center text-blue-600 dark:text-blue-400 mb-6 shadow-sm">
+              <i className="fas fa-heart text-3xl"></i>
+            </div>
+            <h2 className="text-2xl font-black text-slate-800 dark:text-slate-100 tracking-tight">Saved Assets</h2>
+            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-2 px-6">Log in to view your favorite properties and quickly access them from anywhere.</p>
+            <button onClick={() => setActiveTab('profile')} className="mt-8 px-8 py-4 bg-blue-600 text-white font-black rounded-2xl shadow-xl active:scale-95 transition-all text-xs uppercase tracking-widest">
+              Log In / Sign Up
+            </button>
+          </div>
+        );
+      }
       const savedListings = listings.filter(l => currentUser?.favorites?.includes(l.id));
       return (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom duration-500">
@@ -523,12 +540,23 @@ const App: React.FC = () => {
         <ListingDetail
           listing={selectedListing}
           onBack={() => setSelectedListing(null)}
-          onUnlock={() => setIsPaymentModalOpen(true)}
+          onUnlock={() => {
+            if (!currentUser) {
+              alert("You must be logged in to unlock landlord details.");
+              setActiveTab('profile');
+              return;
+            }
+            setIsPaymentModalOpen(true);
+          }}
           isUnlocked={currentUser?.unlockedListings.includes(selectedListing.id) || false}
-          currentUser={currentUser!}
+          currentUser={currentUser}
           onAddReview={handleAddReview}
           isFavorite={currentUser?.favorites?.includes(selectedListing.id) || false}
           onToggleFavorite={() => handleToggleFavorite(selectedListing.id)}
+          onRequireAuth={() => {
+            alert("You must be logged in to perform this action.");
+            setActiveTab('profile');
+          }}
         />
       );
     }
