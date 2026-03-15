@@ -251,7 +251,9 @@ const AuthFlow: React.FC<AuthFlowProps> = ({ onAuthenticated, logoUrl }) => {
             className="w-full py-4 border-2 border-slate-100 text-slate-700 font-bold rounded-2xl active:scale-95 transition-transform flex items-center justify-center gap-3 text-sm uppercase tracking-widest"
           >
             {isLoading ? <i className="fas fa-circle-notch animate-spin"></i> : <><i className="fab fa-google text-red-500"></i> Google Login</>}
-                  <div className="pt-4">
+          </button>
+
+          <div className="pt-4">
             <button onClick={() => setStep('login')}
               className="text-blue-600 font-black text-[10px] uppercase tracking-widest"
             >
