@@ -6,15 +6,15 @@ import { getFunctions, httpsCallable } from "firebase/functions";
 import { getAnalytics, isSupported } from "firebase/analytics";
 import { initializeAppCheck, ReCaptchaEnterpriseProvider } from "firebase/app-check";
 
-// YOUR SECURE CONFIG
+// YOUR SECURE CONFIG - Loaded from environment variables (.env)
 const firebaseConfig = {
-  apiKey: "AIzaSyDyooi4MXpfk27nGTffJ3m-2nRDBBzwd7A",
-  authDomain: "kimana-housing.firebaseapp.com",
-  projectId: "kimana-housing",
-  storageBucket: "kimana-housing.firebasestorage.app",
-  messagingSenderId: "933432328981",
-  appId: "1:933432328981:web:6201dcff1ad84b8e0f5f1c",
-  measurementId: "G-LB5LHRK21J"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID
 };
 
 // INITIALIZE WITH A SINGLETON PATTERN
