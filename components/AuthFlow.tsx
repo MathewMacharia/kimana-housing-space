@@ -11,6 +11,7 @@ import {
   signInWithPopup
 } from 'firebase/auth';
 import { LoggerService } from '../services/logger';
+import { SanitizerService } from '../services/sanitizer';
 
 
 interface AuthFlowProps {
@@ -105,11 +106,14 @@ const AuthFlow: React.FC<AuthFlowProps> = ({ onAuthenticated, logoUrl }) => {
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
-    const { fullName, phone, email, password, confirmPassword } = signupData;
+    const cleanName = SanitizerService.sanitizeText(signupData.fullName, 100);
+    const cleanPhone = SanitizerService.sanitizeText(signupData.phone, 20);
+    const cleanEmail = SanitizerService.sanitizeText(signupData.email, 150);
+    const { password, confirmPassword } = signupData;
 
-    if (!fullName) { alert('Please enter your Full Name'); return; }
-    if (!phone) { alert('Please enter your Phone Number'); return; }
-    if (!email) { alert('Please enter your Email Address'); return; }
+    if (!cleanName || cleanName.length < 2) { alert('Please enter a valid Full Name'); return; }
+    if (!SanitizerService.isValidPhone(cleanPhone)) { alert('Please enter a valid Phone Number'); return; }
+    if (!SanitizerService.isValidEmail(cleanEmail)) { alert('Please enter a valid Email Address'); return; }
     if (!password) { alert('Please enter your Secure Password'); return; }
     if (!confirmPassword) { alert('Please enter your Confirm Password'); return; }
 
@@ -126,14 +130,14 @@ const AuthFlow: React.FC<AuthFlowProps> = ({ onAuthenticated, logoUrl }) => {
     setIsLoading(true);
 
     try {
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      await updateProfile(userCredential.user, { displayName: fullName });
+      const userCredential = await createUserWithEmailAndPassword(auth, cleanEmail, password);
+      await updateProfile(userCredential.user, { displayName: cleanName });
 
       const newUser: User = {
         id: userCredential.user.uid,
-        name: fullName,
-        phone: phone,
-        email: email,
+        name: cleanName,
+        phone: cleanPhone,
+        email: cleanEmail,
         role: role,
         unlockedListings: [],
         favorites: [],
@@ -153,13 +157,13 @@ const AuthFlow: React.FC<AuthFlowProps> = ({ onAuthenticated, logoUrl }) => {
       }
 
       setIsLoading(false);
-      await LoggerService.logAuthAttempt(email, true);
+      await LoggerService.logAuthAttempt(cleanEmail, true);
       onAuthenticated(newUser); // Log in directly after signup
     } catch (error: any) {
       setIsLoading(false);
       console.error("Signup failed:", error);
       alert(`Signup failed: ${error.message}`);
-      await LoggerService.logAuthAttempt(email, false, error.code || error.message);
+      await LoggerService.logAuthAttempt(cleanEmail, false, error.code || error.message);
     }
   };
 

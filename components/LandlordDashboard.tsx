@@ -6,6 +6,7 @@ import PaymentModal from './PaymentModal';
 import { FirebaseService } from '../services/db';
 import { refineDescription } from '../services/geminiService';
 import { ImageUtils } from '../services/imageUtils';
+import { SanitizerService } from '../services/sanitizer';
 
 interface LandlordDashboardProps {
   listings: Listing[];
@@ -186,10 +187,20 @@ const LandlordDashboard: React.FC<LandlordDashboardProps> = ({
       return;
     }
 
+    // Sanitize user inputs rigorously to prevent XSS / NoSQL Injection attempts
+    const sanitizedTitle = SanitizerService.sanitizeText(currentFormListing.title || '', 100);
+    const sanitizedBuildingName = SanitizerService.sanitizeText(currentFormListing.buildingName || '', 100);
+    const sanitizedDescription = SanitizerService.sanitizeText(currentFormListing.description || '', 5000);
+
     if (isEditing && currentFormListing.id) {
       setIsSubmitting(true);
       try {
-        await onUpdateListing(currentFormListing as Listing);
+        await onUpdateListing({
+          ...(currentFormListing as Listing),
+          title: sanitizedTitle,
+          buildingName: sanitizedBuildingName,
+          description: sanitizedDescription
+        });
         setShowForm(false);
       } catch (err) {
         alert("Failed to update property. Check connection.");
@@ -198,9 +209,9 @@ const LandlordDashboard: React.FC<LandlordDashboardProps> = ({
       }
     } else {
       const newListingData: Omit<Listing, 'id'> = {
-        title: currentFormListing.title || '',
-        buildingName: currentFormListing.buildingName || '',
-        description: currentFormListing.description || '',
+        title: sanitizedTitle,
+        buildingName: sanitizedBuildingName,
+        description: sanitizedDescription,
         unitType: currentFormListing.unitType || UnitType.BEDSITTER,
         price: currentFormListing.price || 0,
         deposit: currentFormListing.unitType === UnitType.AIRBNB ? 0 : (currentFormListing.deposit || 0),

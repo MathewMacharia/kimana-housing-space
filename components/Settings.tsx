@@ -4,6 +4,7 @@ import { User, UserRole } from '../types';
 import { FirebaseService } from '../services/db';
 import { ImageUtils } from '../services/imageUtils';
 import { Locale } from '../translations';
+import { SanitizerService } from '../services/sanitizer';
 
 interface SettingsProps {
   currentUser: User;
@@ -64,9 +65,24 @@ const Settings: React.FC<SettingsProps> = ({
 
   const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    const cleanName = SanitizerService.sanitizeText(formData.name, 100);
+    const cleanPhone = SanitizerService.sanitizeText(formData.phone, 20);
+    const cleanEmail = SanitizerService.sanitizeText(formData.email, 150);
+
+    if (!SanitizerService.isValidPhone(cleanPhone)) {
+      alert("Please enter a valid phone number.");
+      return;
+    }
+
+    if (!SanitizerService.isValidEmail(cleanEmail)) {
+      alert("Please enter a valid email address.");
+      return;
+    }
+
     setIsUpdating(true);
     try {
-      const updatedUser = { ...currentUser, ...formData };
+      const updatedUser = { ...currentUser, name: cleanName, phone: cleanPhone, email: cleanEmail };
       await FirebaseService.updateUserAccount(updatedUser);
       onUpdateUser(updatedUser);
 

@@ -1,5 +1,6 @@
-import { GoogleGenAI, Type } from "@google/genai";
 import { RateLimiter } from "./rateLimiter";
+import { httpsCallable } from "firebase/functions";
+import { functions } from "../firebase";
 
 /**
  * Enhanced Search Helper:
@@ -14,27 +15,12 @@ export async function getEnhancedSearchTerms(query: string) {
     return { keywords: [query] };
   }
 
-  const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY });
-  const response = await ai.models.generateContent({
-    model: 'gemini-flash-latest',
-    contents: `Translate this housing search query into search keywords: "${query}"`,
-    config: {
-      responseMimeType: "application/json",
-      responseSchema: {
-        type: Type.OBJECT,
-        properties: {
-          keywords: { type: Type.ARRAY, items: { type: Type.STRING } },
-          unitTypeGuess: { type: Type.STRING, description: "Bedsitter, 1 Bedroom, 2 Bedroom, 3 Bedroom, 4 Bedroom, Own Compound, or Airbnb" },
-          maxPrice: { type: Type.NUMBER }
-        },
-        required: ["keywords"]
-      }
-    }
-  });
-  
   try {
-    return JSON.parse(response.text);
-  } catch (e) {
+    const callEnhancedSearch = httpsCallable<any, any>(functions, 'enhancedSearch');
+    const result = await callEnhancedSearch({ query });
+    return result.data || { keywords: [query] };
+  } catch (error) {
+    console.error("Error calling enhancedSearch function:", error);
     return { keywords: [query] };
   }
 }
@@ -55,20 +41,12 @@ export async function refineDescription(description: string) {
     throw new Error(e.message);
   }
 
-  const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY });
   try {
-    const response = await ai.models.generateContent({
-      model: 'gemini-flash-latest',
-      contents: `You are a world-class real estate copywriter in Kenya. Refine the following property description for a listing in Kimana/Loitokitok/Illasit area. Make it professional, persuasive, and appealing to potential tenants while keeping it honest. 
-      
-      Original draft: "${description}"
-      
-      Provide ONLY the refined text without any introduction or pleasantries.`,
-    });
-    
-    return response.text?.trim() || description;
-  } catch (e) {
-    console.error("Gemini refinement failed:", e);
+    const callRefineDescription = httpsCallable<any, any>(functions, 'refineDescription');
+    const result = await callRefineDescription({ description });
+    return result.data?.refined || description;
+  } catch (error) {
+    console.error("Error calling refineDescription function:", error);
     return description;
   }
 }
