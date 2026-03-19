@@ -23,6 +23,7 @@ import {
   updateEmail
 } from "firebase/auth";
 import { User, Listing, UserRole } from "../types";
+import { LoggerService } from "./logger";
 
 // Throttling state for expensive operations
 let lastRevealTime = 0;
@@ -53,6 +54,7 @@ export const FirebaseService = {
       console.log(`✅ Profile successfully saved to "${collectionName}" collection for:`, user.email);
     } catch (e: any) {
       console.error("❌ Firestore saveUserProfile failed:", e);
+      await LoggerService.logApiError("saveUserProfile", e);
       throw e; // Propagate error to caller
     }
   },
@@ -83,6 +85,7 @@ export const FirebaseService = {
       await this.saveUserProfile(user);
     } catch (e: any) {
       console.error("❌ updateUserAccount failed:", e);
+      await LoggerService.logApiError("updateUserAccount", e);
       throw e;
     }
   },
@@ -186,6 +189,7 @@ export const FirebaseService = {
       return docRef.id;
     } catch (e) {
       console.error("Firestore createListing failed:", e);
+      await LoggerService.logApiError("createListing", e);
       throw e;
     }
   },
@@ -207,6 +211,7 @@ export const FirebaseService = {
       });
     } catch (e) {
       console.error("Firestore updateListing failed:", e);
+      await LoggerService.logApiError("updateListing", e);
       throw e;
     }
   },
@@ -247,6 +252,7 @@ export const FirebaseService = {
       }
     } catch (e) {
       console.error("Firestore unlockListingForUser failed:", e);
+      await LoggerService.logApiError("unlockListingForUser", e);
       throw e;
     }
   },

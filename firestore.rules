@@ -49,5 +49,11 @@ service cloud.firestore {
       allow read: if true;
       allow write: if isAdmin();
     }
+    
+    // 5. System Logs: Clients can create, but never read/update/delete
+    match /logs/{logId} {
+      allow create: if true;
+      allow read, update, delete: if false;
+    }
   }
 }

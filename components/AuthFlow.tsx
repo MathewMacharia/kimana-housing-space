@@ -10,6 +10,8 @@ import {
   updateProfile,
   signInWithPopup
 } from 'firebase/auth';
+import { LoggerService } from '../services/logger';
+
 
 interface AuthFlowProps {
   onAuthenticated: (user: User) => void;
@@ -90,9 +92,12 @@ const AuthFlow: React.FC<AuthFlowProps> = ({ onAuthenticated, logoUrl }) => {
         alert(`Social account successfully linked as a ${role}! 🛡️\nEmail: ${userEmail}`);
         onAuthenticated(newUser);
       }
+      
+      await LoggerService.logAuthAttempt(result.user.email || 'google_auth', true);
     } catch (error: any) {
       console.error("Google Login failed:", error);
       alert(`Google Login failed: ${error.message}`);
+      await LoggerService.logAuthAttempt('google_auth', false, error.code || error.message);
     } finally {
       setIsLoading(false);
     }
@@ -148,11 +153,13 @@ const AuthFlow: React.FC<AuthFlowProps> = ({ onAuthenticated, logoUrl }) => {
       }
 
       setIsLoading(false);
+      await LoggerService.logAuthAttempt(email, true);
       onAuthenticated(newUser); // Log in directly after signup
     } catch (error: any) {
       setIsLoading(false);
       console.error("Signup failed:", error);
       alert(`Signup failed: ${error.message}`);
+      await LoggerService.logAuthAttempt(email, false, error.code || error.message);
     }
   };
 
@@ -191,10 +198,20 @@ const AuthFlow: React.FC<AuthFlowProps> = ({ onAuthenticated, logoUrl }) => {
         };
         onAuthenticated(newUser);
       }
+      await LoggerService.logAuthAttempt(loginData.identifier, true);
     } catch (error: any) {
       setIsLoading(false);
       console.error("Login failed:", error);
-      alert(`Login failed: ${error.message}. Please check your credentials.`);
+      
+      let errorMsg = error.message;
+      if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
+        errorMsg = 'Incorrect email or password.';
+      } else if (error.code === 'auth/too-many-requests') {
+         errorMsg = 'Too many failed login attempts. Please try again later.';
+      }
+      
+      alert(`Login failed: ${errorMsg}`);
+      await LoggerService.logAuthAttempt(loginData.identifier, false, error.code || error.message);
     }
   };
 
