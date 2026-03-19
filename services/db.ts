@@ -177,8 +177,8 @@ export const FirebaseService = {
     try {
       if (!db || !auth.currentUser) throw new Error("Authentication required for submissions");
       
-      // RATE LIMIT: Max 5 listing creations per hour per browser
-      RateLimiter.checkLimit('CREATE_LISTING', 5, 60 * 60 * 1000);
+      // RATE LIMIT: Max 10 listing creations per hour per browser
+      RateLimiter.checkLimit('CREATE_LISTING', 10, 60 * 60 * 1000);
 
       const listingsRef = collection(db, "listings");
       
