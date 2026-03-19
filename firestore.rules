@@ -18,13 +18,12 @@ service cloud.firestore {
     // 1. Listings: Anyone can read, only authenticated landlords can create/update their own
     match /listings/{listingId} {
       allow read: if true;
-      allow create: if request.auth != null;
+      allow create: if request.auth != null && request.resource.data.landlordId == request.auth.uid;
       allow update: if request.auth != null && (
-        request.resource.data.landlordId == request.auth.uid || 
-        resource.data.landlordId == request.auth.uid ||
-        isAdmin()
+        isAdmin() || 
+        (resource.data.landlordId == request.auth.uid && request.resource.data.landlordId == request.auth.uid)
       ) && isNotSpamming();
-      allow delete: if isAdmin();
+      allow delete: if isAdmin() || (request.auth != null && resource.data.landlordId == request.auth.uid);
     }
     
     // 2. Tenants: Users can only read/write their own profiles

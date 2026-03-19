@@ -36,6 +36,11 @@ export const FirebaseService = {
       const collectionName = user.role === UserRole.LANDLORD ? "landlords" : "tenants";
       // ALWAYS use UID (user.id) as the primary key for consistency
       if (!user.id) throw new Error("User ID is required to save profile");
+      
+      // PREVENT IDOR: Ensure the user is only saving their own profile
+      if (auth.currentUser && user.id !== auth.currentUser.uid) {
+        throw new Error("Unauthorized: Cannot modify another user's profile.");
+      }
 
       const userRef = doc(db, collectionName, user.id);
 
@@ -169,10 +174,15 @@ export const FirebaseService = {
     try {
       if (!db || !auth.currentUser) throw new Error("Authentication required for submissions");
       const listingsRef = collection(db, "listings");
-      const docRef = await addDoc(listingsRef, {
+      
+      // PREVENT IDOR: Force the landlordId to be the authenticated user's ID
+      const secureListing = {
         ...listing,
+        landlordId: auth.currentUser.uid,
         createdAt: Timestamp.now()
-      });
+      };
+      
+      const docRef = await addDoc(listingsRef, secureListing);
       return docRef.id;
     } catch (e) {
       console.error("Firestore createListing failed:", e);
@@ -183,6 +193,13 @@ export const FirebaseService = {
   async updateListing(id: string, updates: Partial<Listing>): Promise<void> {
     try {
       if (!db || !auth.currentUser) return;
+      
+      // PREVENT IDOR: Do not allow frontend to try to transfer ownership maliciously
+      if (updates.landlordId && updates.landlordId !== auth.currentUser.uid) {
+        delete updates.landlordId;
+        console.warn("Blocked attempt to change landlordId during update.");
+      }
+
       const listingRef = doc(db, "listings", id);
       await updateDoc(listingRef, {
         ...updates,
@@ -211,6 +228,11 @@ export const FirebaseService = {
   async unlockListingForUser(identifier: string, listingId: string): Promise<void> {
     try {
       if (!db || !auth.currentUser) return;
+
+      // PREVENT IDOR: Users can only unlock listings for themselves
+      if (identifier !== auth.currentUser.uid) {
+        throw new Error("Unauthorized: Cannot modify unlock history for another user.");
+      }
 
       const profile = await this.getUserProfile(identifier);
       if (!profile) return;
