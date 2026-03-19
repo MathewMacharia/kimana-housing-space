@@ -1,12 +1,20 @@
-
 import { GoogleGenAI, Type } from "@google/genai";
+import { RateLimiter } from "./rateLimiter";
 
 /**
  * Enhanced Search Helper:
  * Takes a messy user query and returns structured search terms.
  */
 export async function getEnhancedSearchTerms(query: string) {
-  const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+  try {
+    // RATE LIMIT: Max 10 requests every 10 minutes
+    RateLimiter.checkLimit('AI_SEARCH', 10, 10 * 60 * 1000);
+  } catch (e: any) {
+    console.warn("AI Search Rate Limit Exceeded. Falling back to simple search.", e.message);
+    return { keywords: [query] };
+  }
+
+  const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY });
   const response = await ai.models.generateContent({
     model: 'gemini-flash-latest',
     contents: `Translate this housing search query into search keywords: "${query}"`,
@@ -38,7 +46,16 @@ export async function getEnhancedSearchTerms(query: string) {
 export async function refineDescription(description: string) {
   if (!description || description.length < 10) return description;
   
-  const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+  try {
+    // RATE LIMIT: Max 5 requests every hour to prevent abuse of the longer generation
+    RateLimiter.checkLimit('AI_REFINE', 5, 60 * 60 * 1000);
+  } catch (e: any) {
+    console.warn("AI Refinement Rate Limit Exceeded. Falling back to original.", e.message);
+    // Explicitly throw so the UI can alert the user
+    throw new Error(e.message);
+  }
+
+  const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY });
   try {
     const response = await ai.models.generateContent({
       model: 'gemini-flash-latest',

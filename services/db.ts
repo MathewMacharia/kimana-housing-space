@@ -20,10 +20,10 @@ import { db, storage, auth, functions, httpsCallable } from "../firebase";
 import {
   updateProfile,
   verifyBeforeUpdateEmail,
-  updateEmail
 } from "firebase/auth";
 import { User, Listing, UserRole } from "../types";
 import { LoggerService } from "./logger";
+import { RateLimiter } from "./rateLimiter";
 
 // Throttling state for expensive operations
 let lastRevealTime = 0;
@@ -176,6 +176,10 @@ export const FirebaseService = {
   async createListing(listing: Omit<Listing, 'id'>): Promise<string> {
     try {
       if (!db || !auth.currentUser) throw new Error("Authentication required for submissions");
+      
+      // RATE LIMIT: Max 5 listing creations per hour per browser
+      RateLimiter.checkLimit('CREATE_LISTING', 5, 60 * 60 * 1000);
+
       const listingsRef = collection(db, "listings");
       
       // PREVENT IDOR: Force the landlordId to be the authenticated user's ID
@@ -234,6 +238,9 @@ export const FirebaseService = {
     try {
       if (!db || !auth.currentUser) return;
 
+      // RATE LIMIT: Max 10 unlocks per minute to prevent mass-scraping landlord details
+      RateLimiter.checkLimit('UNLOCK_LISTING', 10, 60 * 1000);
+
       // PREVENT IDOR: Users can only unlock listings for themselves
       if (identifier !== auth.currentUser.uid) {
         throw new Error("Unauthorized: Cannot modify unlock history for another user.");
@@ -260,6 +267,9 @@ export const FirebaseService = {
   async toggleFavorite(user: User, listingId: string): Promise<string[]> {
     try {
       if (!db || !auth.currentUser) throw new Error("Authentication required");
+
+      // RATE LIMIT: Max 30 favorites toggled per minute to prevent spamming the db
+      RateLimiter.checkLimit('TOGGLE_FAVORITE', 30, 60 * 1000);
 
       const favorites = [...(user.favorites || [])];
       const index = favorites.indexOf(listingId);
