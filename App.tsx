@@ -627,10 +627,7 @@ const App: React.FC = () => {
                   ...currentUser,
                   unlockedListings: [...(currentUser.unlockedListings || []), selectedListing.id]
                 });
-                alert(`Unlock Successful!\n\nBuilding: ${selectedListing.buildingName || 'N/A'}\nLandlord: ${selectedListing.landlordName}\nPhone: ${selectedListing.landlordPhone}`);
                 setIsPaymentModalOpen(false);
-                setActiveTab('home');
-                setSelectedListing(null);
               });
             }
           }}
