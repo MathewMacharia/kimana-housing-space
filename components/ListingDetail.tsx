@@ -230,25 +230,25 @@ const ListingDetail: React.FC<ListingDetailProps> = ({
         <div className="px-1">
           {!canSeeContact ? (
             (!currentUser || currentUser.role === UserRole.TENANT) ? (
-              <div className="bg-white dark:bg-slate-900 border-2 border-blue-600 dark:border-blue-500 rounded-[2.5rem] p-8 text-center space-y-6 shadow-2xl shadow-blue-50 dark:shadow-none relative overflow-hidden">
-                <div className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center text-white text-2xl mx-auto shadow-xl">
+              <div className="bg-white dark:bg-slate-900 border-[1.5px] border-blue-500 rounded-[2.5rem] p-8 text-center space-y-6 shadow-xl relative overflow-hidden">
+                <div className="w-14 h-14 bg-[#0d6efd] rounded-2xl flex items-center justify-center text-white text-xl mx-auto shadow-lg shadow-blue-500/30">
                   <i className="fas fa-lock"></i>
                 </div>
                 <div>
-                  <h4 className="font-black text-slate-900 dark:text-slate-100 text-lg tracking-tight uppercase">Unlock Full Access</h4>
-                  <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl border border-slate-100 dark:border-slate-800 mt-4">
-                    <p className="text-[13px] text-slate-700 dark:text-slate-300 leading-relaxed text-left">
-                      Dear Tenant, to get the <span className="font-black text-blue-600">Building Name / Title</span> and <span className="font-black text-blue-600 dark:text-blue-400">contacts of the landlord/Agent</span>, please pay a charge of <span className="font-black underline">Ksh {unlockFee}</span>.
+                  <h4 className="font-medium text-slate-800 dark:text-slate-100 text-[15px] tracking-wide uppercase">Unlock Full Access</h4>
+                  <div className="bg-[#f8f9fa] dark:bg-slate-800/50 p-6 rounded-2xl border border-slate-100 dark:border-slate-800 mt-5">
+                    <p className="text-[13px] text-[#495057] dark:text-slate-300 leading-relaxed text-left">
+                      Dear Tenant, to get the <span className="font-bold text-[#0d6efd]">Building Name / Title</span> and <span className="font-bold text-[#0d6efd] dark:text-blue-400">contacts of the landlord/Agent</span>, please pay a charge of <span className="font-bold">Ksh {unlockFee}</span>.
                     </p>
-                    <div className="mt-3 pt-3 border-t border-slate-200 dark:border-slate-700">
-                      <p className="text-[10px] text-slate-400 font-bold uppercase italic">
+                    <div className="mt-4 pt-4 border-t border-[#dee2e6] dark:border-slate-700 text-center">
+                      <p className="text-[9px] text-[#868e96] font-bold uppercase italic tracking-wider">
                         (Ksh 50 for rental, 100 for BnB/Guest Room/Campsite, 50 for Stalls)
                       </p>
                     </div>
                   </div>
                 </div>
-                <button onClick={onUnlock} className="w-full py-5 bg-[#3BB143] text-white font-black rounded-2xl shadow-xl active:scale-95 transition-all text-[11px] uppercase tracking-widest flex items-center justify-center gap-2">
-                  <i className="fas fa-mobile-screen-button"></i> Pay via M-Pesa
+                <button onClick={onUnlock} className="w-full py-4 bg-[#00b050] hover:bg-[#00a048] text-white font-bold rounded-xl shadow-[0_4px_14px_0_rgba(0,176,80,0.39)] active:scale-[0.98] transition-all text-xs uppercase tracking-wider flex items-center justify-center gap-2">
+                  <i className="fas fa-unlock"></i> Unlock Listing
                 </button>
               </div>
             ) : (
