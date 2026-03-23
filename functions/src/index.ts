@@ -1,6 +1,7 @@
-import { onCall, HttpsError } from "firebase-functions/v2/https";
+import { onCall, HttpsError, onRequest } from "firebase-functions/v2/https";
 import * as admin from "firebase-admin";
 import { GoogleGenAI, Type } from "@google/genai";
+import * as crypto from "crypto";
 
 admin.initializeApp();
 
@@ -206,4 +207,200 @@ export const refineDescription = onCall({
         console.error("refineDescription error:", error);
         throw new HttpsError("internal", "An error occurred while refining the description.");
     }
+});
+
+/**
+ * reCAPTCHA Verification Cloud Function
+ * Submits the frontend token to Google reCAPTCHA Enterprise API for a risk assessment.
+ */
+export const verifyRecaptcha = onCall({
+    minInstances: 0,
+    concurrency: 80,
+    memory: "256MiB",
+    timeoutSeconds: 30,
+    region: "us-central1"
+}, async (request) => {
+    const { token, action } = request.data;
+    if (!token) {
+        throw new HttpsError("invalid-argument", "reCAPTCHA token is required.");
+    }
+
+    const apiKey = process.env.RECAPTCHA_API_KEY; 
+    const siteKey = "6Lfm_nosAAAAADoemKEado5UgzoZdA5P_E9EmA0h"; 
+    
+    // Fallback if not set
+    if (!apiKey) {
+        console.error("RECAPTCHA_API_KEY environment variable is not set.");
+        throw new HttpsError("internal", "Server configuration error.");
+    }
+
+    // Since the project might be inferred from the key or we can parse the site key's project, 
+    // the user provided the REST API url as: 
+    // `https://recaptchaenterprise.googleapis.com/v1/projects/my-portfolio-48f2c/assessments?key=API_KEY`
+    const projectId = "my-portfolio-48f2c";
+    const url = `https://recaptchaenterprise.googleapis.com/v1/projects/${projectId}/assessments?key=${apiKey}`;
+    
+    try {
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                event: {
+                    token: token,
+                    expectedAction: action || "USER_ACTION",
+                    siteKey: siteKey
+                }
+            })
+        });
+
+        if (!response.ok) {
+            console.error("reCAPTCHA API error:", response.status, await response.text());
+            throw new HttpsError("internal", "Error communicating with reCAPTCHA service.");
+        }
+
+        const data: any = await response.json();
+        
+        // Assert token is valid and score is acceptable
+        if (data.tokenProperties?.valid) {
+            const score = data.riskAnalysis?.score || 0;
+            return { success: true, valid: true, score: score };
+        } else {
+            console.warn("reCAPTCHA invalid token:", data.tokenProperties?.invalidReason);
+            return { success: false, valid: false, reason: data.tokenProperties?.invalidReason, score: 0 };
+        }
+    } catch (error: any) {
+        console.error("reCAPTCHA verification exception:", error);
+        throw new HttpsError("internal", "Error verifying reCAPTCHA.");
+    }
+});
+
+/**
+ * Initialize a Paystack checkout session for unlocking a listing.
+ */
+export const initializePayment = onCall({
+    secrets: ["PAYSTACK_SECRET_KEY"],
+    minInstances: 0,
+    concurrency: 80,
+    region: "us-central1"
+}, async (request) => {
+    if (!request.auth) {
+        throw new HttpsError("unauthenticated", "User must be logged in to initialize payment.");
+    }
+
+    const listingId = request.data.listingId;
+    const userId = request.auth.uid;
+    const email = request.data.email || request.auth.token?.email || "tenant@masqani.com";
+
+    if (!listingId) {
+        throw new HttpsError("invalid-argument", "Listing ID is required.");
+    }
+
+    const secretKey = process.env.PAYSTACK_SECRET_KEY;
+    if (!secretKey) {
+        console.error("PAYSTACK_SECRET_KEY is not configured.");
+        throw new HttpsError("internal", "Payment gateway is not configured.");
+    }
+
+    try {
+        const response = await fetch("https://api.paystack.co/transaction/initialize", {
+            method: "POST",
+            headers: {
+                "Authorization": `Bearer ${secretKey}`,
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                email: email,
+                amount: 100 * 100, // Ksh 100 in lowest denomination (10000)
+                currency: "KES",
+                metadata: {
+                    userId: userId,
+                    listingId: listingId
+                }
+            })
+        });
+
+        if (!response.ok) {
+            console.error("Paystack API error:", response.status, await response.text());
+            throw new HttpsError("internal", "Failed to initialize payment gateway.");
+        }
+
+        const data: any = await response.json();
+        
+        if (!data.status) {
+            throw new HttpsError("internal", "Paystack returned a failure status.");
+        }
+
+        return {
+            authorizationUrl: data.data.authorization_url,
+            reference: data.data.reference
+        };
+    } catch (error: any) {
+        console.error("initializePayment exception:", error);
+        throw new HttpsError("internal", "Error initializing payment.");
+    }
+});
+
+/**
+ * Handle incoming webhooks from Paystack.
+ */
+export const paystackWebhook = onRequest({
+    secrets: ["PAYSTACK_SECRET_KEY"],
+    region: "us-central1"
+}, async (req, res) => {
+    // Only accept POST requests
+    if (req.method !== 'POST') {
+        res.status(405).send("Method Not Allowed");
+        return;
+    }
+
+    const secretKey = process.env.PAYSTACK_SECRET_KEY;
+    if (!secretKey) {
+        console.error("PAYSTACK_SECRET_KEY is not configured.");
+        res.status(500).send("Server Configuration Error");
+        return;
+    }
+
+    // Verify Paystack Signature
+    const hash = crypto.createHmac('sha512', secretKey).update(JSON.stringify(req.body)).digest('hex');
+    const paystackSignature = req.headers['x-paystack-signature'];
+    
+    if (hash !== paystackSignature) {
+        console.warn("Invalid Paystack webhook signature.");
+        res.status(403).send("Invalid Signature");
+        return;
+    }
+
+    // Process the event
+    const event = req.body;
+    
+    // We only care about successful charges
+    if (event.event === 'charge.success') {
+        const data = event.data;
+        const metadata = data.metadata;
+        
+        if (!metadata || !metadata.userId || !metadata.listingId) {
+            console.error("Missing metadata in Paystack charge.success event:", metadata);
+            res.status(400).send("Missing Metadata");
+            return;
+        }
+
+        const { userId, listingId } = metadata;
+
+        try {
+            // Add the listing to the user's unlockedListings array
+            await admin.firestore().collection("tenants").doc(userId).set({
+                unlockedListings: admin.firestore.FieldValue.arrayUnion(listingId)
+            }, { merge: true });
+
+            console.log(`Successfully unlocked listing ${listingId} for user ${userId}`);
+        } catch (error) {
+            console.error("Error updating Firestore after payment:", error);
+            // Even if DB fails, return 200 to Paystack so they don't retry unnecessarily
+            res.status(200).send("Database Error (Acknowledged)");
+            return;
+        }
+    }
+
+    // Respond with 200 OK to acknowledge receipt
+    res.status(200).send("OK");
 });

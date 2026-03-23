@@ -1,7 +1,7 @@
 // Build trigger: re-rendering reCAPTCHA checkbox fix
 import React, { useState } from 'react';
 import { UserRole, User } from '../types';
-import { auth, googleProvider } from '../firebase';
+import { auth, googleProvider, functions } from '../firebase';
 import { FirebaseService } from '../services/db';
 import {
   createUserWithEmailAndPassword,
@@ -10,6 +10,7 @@ import {
   updateProfile,
   signInWithPopup
 } from 'firebase/auth';
+import { httpsCallable } from 'firebase/functions';
 import { LoggerService } from '../services/logger';
 import { SanitizerService } from '../services/sanitizer';
 
@@ -130,6 +131,22 @@ const AuthFlow: React.FC<AuthFlowProps> = ({ onAuthenticated, logoUrl }) => {
     setIsLoading(true);
 
     try {
+      const verifyRecaptcha = httpsCallable(functions, 'verifyRecaptcha');
+      const recaptchaResult = await verifyRecaptcha({ token: captchaToken, action: 'signup' }) as any;
+      
+      if (!recaptchaResult.data?.valid || recaptchaResult.data?.score < 0.5) {
+        alert("Security check failed (Risk score too low). Please refresh and try again.");
+        setIsLoading(false);
+        return;
+      }
+    } catch (err: any) {
+      console.error("reCAPTCHA validation error:", err);
+      alert("Verification service unavailable. Please try again later.");
+      setIsLoading(false);
+      return;
+    }
+
+    try {
       const userCredential = await createUserWithEmailAndPassword(auth, cleanEmail, password);
       await updateProfile(userCredential.user, { displayName: cleanName });
 
@@ -180,6 +197,22 @@ const AuthFlow: React.FC<AuthFlowProps> = ({ onAuthenticated, logoUrl }) => {
     }
 
     setIsLoading(true);
+
+    try {
+      const verifyRecaptcha = httpsCallable(functions, 'verifyRecaptcha');
+      const recaptchaResult = await verifyRecaptcha({ token: captchaToken, action: 'login' }) as any;
+      
+      if (!recaptchaResult.data?.valid || recaptchaResult.data?.score < 0.5) {
+        alert("Security check failed (Risk score too low). Please refresh and try again.");
+        setIsLoading(false);
+        return;
+      }
+    } catch (err: any) {
+      console.error("reCAPTCHA validation error:", err);
+      alert("Verification service unavailable. Please try again later.");
+      setIsLoading(false);
+      return;
+    }
 
     try {
       const userCredential = await signInWithEmailAndPassword(auth, loginData.identifier, loginData.password);
