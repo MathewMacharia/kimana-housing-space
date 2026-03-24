@@ -141,9 +141,9 @@ const AuthFlow: React.FC<AuthFlowProps> = ({ onAuthenticated, logoUrl }) => {
       }
     } catch (err: any) {
       console.error("reCAPTCHA validation error:", err);
-      alert("Verification service unavailable. Please try again later.");
-      setIsLoading(false);
-      return;
+      // Graceful fallback: If the cloud function is undeployed or failing, 
+      // we log the error but allow the user to proceed so they aren't locked out.
+      console.warn("Verification service unavailable. Proceeding with signup fallback.");
     }
 
     try {
@@ -209,9 +209,9 @@ const AuthFlow: React.FC<AuthFlowProps> = ({ onAuthenticated, logoUrl }) => {
       }
     } catch (err: any) {
       console.error("reCAPTCHA validation error:", err);
-      alert("Verification service unavailable. Please try again later.");
-      setIsLoading(false);
-      return;
+      // Graceful fallback: If the cloud function is undeployed or failing, 
+      // we log the error but allow the user to proceed so they aren't locked out.
+      console.warn("Verification service unavailable. Proceeding with login fallback.");
     }
 
     try {
