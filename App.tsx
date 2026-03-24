@@ -52,6 +52,18 @@ const App: React.FC = () => {
     if (cachedLogo) setGlobalLogo(cachedLogo);
   }, []);
 
+  useEffect(() => {
+    // Detect Paystack redirect callback
+    const urlParams = new URLSearchParams(window.location.search);
+    const reference = urlParams.get('reference');
+    
+    if (reference) {
+      alert("Payment successful! The landlord's contact details will be revealed momentarily.");
+      // Clean up the URL so it doesn't trigger again on reload
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, []);
+
   const t = (key: string) => TRANSLATIONS[language][key] || key;
 
   useEffect(() => {
@@ -634,6 +646,8 @@ const App: React.FC = () => {
           title="Secure Unlock"
           amount={unlockFee}
           subtitle={`Revealing Contact: ${selectedListing?.title}`}
+          listingId={selectedListing?.id || ''}
+          userEmail={currentUser?.email || ''}
         />
       )}
 

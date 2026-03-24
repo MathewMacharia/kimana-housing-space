@@ -1,5 +1,6 @@
 
 import React, { useState } from 'react';
+import { FirebaseService } from '../services/db';
 
 interface PaymentModalProps {
   onClose: () => void;
@@ -7,11 +8,13 @@ interface PaymentModalProps {
   title: string;
   amount: number;
   subtitle: string;
+  listingId: string;
+  userEmail?: string;
 }
 
 type PaymentMethod = 'mpesa' | 'mpesa-till' | 'airtel' | 'card';
 
-const PaymentModal: React.FC<PaymentModalProps> = ({ onClose, onSuccess, title, amount, subtitle }) => {
+const PaymentModal: React.FC<PaymentModalProps> = ({ onClose, onSuccess, title, amount, subtitle, listingId, userEmail }) => {
   const [method, setMethod] = useState<PaymentMethod>('card');
   const [step, setStep] = useState<'details' | 'processing' | 'success' | 'error'>('details');
   const [phone, setPhone] = useState('');
@@ -19,7 +22,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ onClose, onSuccess, title, 
   const [expiry, setExpiry] = useState('');
   const [cvv, setCvv] = useState('');
 
-  const handlePay = (e?: React.FormEvent) => {
+  const handlePay = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     
     if (method === 'mpesa' && phone.length < 9) {
@@ -33,17 +36,22 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ onClose, onSuccess, title, 
 
     setStep('processing');
 
-    // Simulate Payment Gateway processing
-    setTimeout(() => {
-      if (Math.random() > 0.1) {
-        setStep('success');
-        setTimeout(() => {
-          onSuccess();
-        }, 1500);
-      } else {
-        setStep('error');
-      }
-    }, 3500);
+    try {
+      const email = userEmail || 'tenant@masqani.com';
+      const callbackUrl = window.location.href; // Return to the exact same page
+      
+      const { authorizationUrl } = await FirebaseService.initializePaystackPayment(
+        listingId,
+        email,
+        callbackUrl
+      );
+      
+      // Redirect to Paystack's secure checkout page
+      window.location.href = authorizationUrl;
+    } catch (err) {
+      console.error("Payment initialization failed:", err);
+      setStep('error');
+    }
   };
 
   const renderMethodIcon = (type: PaymentMethod) => {

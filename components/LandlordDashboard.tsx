@@ -522,6 +522,8 @@ const LandlordDashboard: React.FC<LandlordDashboardProps> = ({
           title="Security Activation"
           amount={listingFee}
           subtitle={`Activating Asset: ${pendingListing?.title}`}
+          listingId="new_listing"
+          userEmail={landlordEmail}
         />
       )}
 

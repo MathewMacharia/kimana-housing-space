@@ -278,7 +278,6 @@ export const verifyRecaptcha = onCall({
  * Initialize a Paystack checkout session for unlocking a listing.
  */
 export const initializePayment = onCall({
-    secrets: ["PAYSTACK_SECRET_KEY"],
     minInstances: 0,
     concurrency: 80,
     region: "us-central1"
@@ -290,6 +289,7 @@ export const initializePayment = onCall({
     const listingId = request.data.listingId;
     const userId = request.auth.uid;
     const email = request.data.email || request.auth.token?.email || "tenant@masqani.com";
+    const callbackUrl = request.data.callbackUrl;
 
     if (!listingId) {
         throw new HttpsError("invalid-argument", "Listing ID is required.");
@@ -312,6 +312,7 @@ export const initializePayment = onCall({
                 email: email,
                 amount: 100 * 100, // Ksh 100 in lowest denomination (10000)
                 currency: "KES",
+                callback_url: callbackUrl,
                 metadata: {
                     userId: userId,
                     listingId: listingId
@@ -344,7 +345,6 @@ export const initializePayment = onCall({
  * Handle incoming webhooks from Paystack.
  */
 export const paystackWebhook = onRequest({
-    secrets: ["PAYSTACK_SECRET_KEY"],
     region: "us-central1"
 }, async (req, res) => {
     // Only accept POST requests

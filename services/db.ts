@@ -234,6 +234,17 @@ export const FirebaseService = {
   },
 
   // Unlock Transaction logic
+  async initializePaystackPayment(listingId: string, email: string, callbackUrl: string): Promise<{ authorizationUrl: string, reference: string }> {
+    try {
+      const initFunc = httpsCallable(functions, 'initializePayment');
+      const result = await initFunc({ listingId, email, callbackUrl });
+      return result.data as { authorizationUrl: string, reference: string };
+    } catch (e: any) {
+      console.error("Cloud Function initializePayment failed:", e);
+      throw e;
+    }
+  },
+
   async unlockListingForUser(identifier: string, listingId: string): Promise<void> {
     try {
       if (!db || !auth.currentUser) return;
