@@ -47,7 +47,7 @@ if (typeof window !== 'undefined') {
 const auth = getAuth(app);
 const db = getFirestore(app);
 const storage = getStorage(app);
-const functions = getFunctions(app, "us-central1");
+const functions = getFunctions(app, "europe-west1");
 const googleProvider = new GoogleAuthProvider();
 
 // Analytics is optional and can fail in some environments

@@ -6,11 +6,10 @@ import * as crypto from "crypto";
 admin.initializeApp();
 
 export const revealContact = onCall({
-    minInstances: 1, // Keep 1 instance warm at all times to eliminate cold starts
     concurrency: 80, // Allow 1 instance to handle up to 80 concurrent requests
     memory: "512MiB", // Valid v2 memory format
     timeoutSeconds: 30,
-    region: "us-central1" // Primary region (multi-region handled in firebase.json for deployment)
+    region: "europe-west1" // Primary region (multi-region handled in firebase.json for deployment)
 }, async (request) => {
     // 1. Authentication Check
     if (!request.auth) {
@@ -106,11 +105,10 @@ export const revealContact = onCall({
  * Takes a messy user query and returns structured search terms.
  */
 export const enhancedSearch = onCall({
-    minInstances: 1,
     concurrency: 80,
     memory: "512MiB",
     timeoutSeconds: 30,
-    region: "us-central1"
+    region: "europe-west1"
 }, async (request) => {
     // Basic rate limit check could be added here similar to revealContact if needed
     
@@ -167,11 +165,10 @@ export const enhancedSearch = onCall({
  * Polishes a raw property description into a professional and appealing marketing text.
  */
 export const refineDescription = onCall({
-    minInstances: 1,
     concurrency: 80,
     memory: "512MiB",
     timeoutSeconds: 30,
-    region: "us-central1"
+    region: "europe-west1"
 }, async (request) => {
     if (!request.auth) {
         throw new HttpsError("unauthenticated", "User must be logged in to use this feature.");
@@ -218,7 +215,7 @@ export const verifyRecaptcha = onCall({
     concurrency: 80,
     memory: "256MiB",
     timeoutSeconds: 30,
-    region: "us-central1"
+    region: "europe-west1"
 }, async (request) => {
     const { token, action } = request.data;
     if (!token) {
@@ -280,7 +277,7 @@ export const verifyRecaptcha = onCall({
 export const initializePayment = onCall({
     minInstances: 0,
     concurrency: 80,
-    region: "us-central1"
+    region: "europe-west1"
 }, async (request) => {
     if (!request.auth) {
         throw new HttpsError("unauthenticated", "User must be logged in to initialize payment.");
@@ -345,7 +342,7 @@ export const initializePayment = onCall({
  * Handle incoming webhooks from Paystack.
  */
 export const paystackWebhook = onRequest({
-    region: "us-central1"
+    region: "europe-west1"
 }, async (req, res) => {
     // Only accept POST requests
     if (req.method !== 'POST') {

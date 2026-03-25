@@ -7,11 +7,11 @@ const genai_1 = require("@google/genai");
 const crypto = require("crypto");
 admin.initializeApp();
 exports.revealContact = (0, https_1.onCall)({
-    minInstances: 1, // Keep 1 instance warm at all times to eliminate cold starts
+
     concurrency: 80, // Allow 1 instance to handle up to 80 concurrent requests
     memory: "512MiB", // Valid v2 memory format
     timeoutSeconds: 30,
-    region: "us-central1" // Primary region (multi-region handled in firebase.json for deployment)
+    region: "europe-west1" // Primary region (multi-region handled in firebase.json for deployment)
 }, async (request) => {
     // 1. Authentication Check
     if (!request.auth) {
@@ -83,11 +83,11 @@ exports.revealContact = (0, https_1.onCall)({
  * Takes a messy user query and returns structured search terms.
  */
 exports.enhancedSearch = (0, https_1.onCall)({
-    minInstances: 1,
+
     concurrency: 80,
     memory: "512MiB",
     timeoutSeconds: 30,
-    region: "us-central1"
+    region: "europe-west1"
 }, async (request) => {
     // Basic rate limit check could be added here similar to revealContact if needed
     let query = request.data.query;
@@ -140,11 +140,11 @@ exports.enhancedSearch = (0, https_1.onCall)({
  * Polishes a raw property description into a professional and appealing marketing text.
  */
 exports.refineDescription = (0, https_1.onCall)({
-    minInstances: 1,
+
     concurrency: 80,
     memory: "512MiB",
     timeoutSeconds: 30,
-    region: "us-central1"
+    region: "europe-west1"
 }, async (request) => {
     if (!request.auth) {
         throw new https_1.HttpsError("unauthenticated", "User must be logged in to use this feature.");
@@ -186,7 +186,7 @@ exports.verifyRecaptcha = (0, https_1.onCall)({
     concurrency: 80,
     memory: "256MiB",
     timeoutSeconds: 30,
-    region: "us-central1"
+    region: "europe-west1"
 }, async (request) => {
     const { token, action } = request.data;
     if (!token) {
@@ -240,10 +240,9 @@ exports.verifyRecaptcha = (0, https_1.onCall)({
  * Initialize a Paystack checkout session for unlocking a listing.
  */
 exports.initializePayment = (0, https_1.onCall)({
-    secrets: ["PAYSTACK_SECRET_KEY"],
     minInstances: 0,
     concurrency: 80,
-    region: "us-central1"
+    region: "europe-west1"
 }, async (request) => {
     if (!request.auth) {
         throw new https_1.HttpsError("unauthenticated", "User must be logged in to initialize payment.");
@@ -251,6 +250,7 @@ exports.initializePayment = (0, https_1.onCall)({
     const listingId = request.data.listingId;
     const userId = request.auth.uid;
     const email = request.data.email || request.auth.token?.email || "tenant@masqani.com";
+    const callbackUrl = request.data.callbackUrl;
     if (!listingId) {
         throw new https_1.HttpsError("invalid-argument", "Listing ID is required.");
     }
@@ -270,6 +270,7 @@ exports.initializePayment = (0, https_1.onCall)({
                 email: email,
                 amount: 100 * 100, // Ksh 100 in lowest denomination (10000)
                 currency: "KES",
+                callback_url: callbackUrl,
                 metadata: {
                     userId: userId,
                     listingId: listingId
@@ -298,8 +299,7 @@ exports.initializePayment = (0, https_1.onCall)({
  * Handle incoming webhooks from Paystack.
  */
 exports.paystackWebhook = (0, https_1.onRequest)({
-    secrets: ["PAYSTACK_SECRET_KEY"],
-    region: "us-central1"
+    region: "europe-west1"
 }, async (req, res) => {
     // Only accept POST requests
     if (req.method !== 'POST') {
