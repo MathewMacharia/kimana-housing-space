@@ -29,7 +29,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ onClose, onSuccess, title, 
       alert('Please enter a valid phone number');
       return;
     }
-    if (method === 'card' && (cardNumber.length < 16 || expiry.length < 5 || cvv.length < 3)) {
+    if (method === 'card' && (cardNumber.length < 16 || expiry.length < 4 || cvv.length < 3)) {
       alert('Please enter valid card details');
       return;
     }
