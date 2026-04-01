@@ -459,11 +459,28 @@ const App: React.FC = () => {
       setActiveTab('profile');
       return;
     }
+
+    const previousFavorites = currentUser.favorites || [];
+    
+    // OPTIMISTIC UPDATE: instantly turn the heart blue without waiting for server lag
+    setCurrentUser(prev => {
+      if (!prev) return prev;
+      const faves = prev.favorites || [];
+      return {
+        ...prev,
+        favorites: faves.includes(listingId) ? faves.filter(id => id !== listingId) : [...faves, listingId]
+      };
+    });
+
     try {
-      const newFavorites = await FirebaseService.toggleFavorite(currentUser, listingId);
-      setCurrentUser({ ...currentUser, favorites: newFavorites });
+      const newFavoritesServer = await FirebaseService.toggleFavorite(currentUser, listingId);
+      // SYNC: ensure the server's truth matches 
+      setCurrentUser(prev => prev ? { ...prev, favorites: newFavoritesServer } : prev);
     } catch (e) {
       console.error("Toggle favorite failed:", e);
+      // ROLLBACK: undo visual change if the database transaction actually failed
+      setCurrentUser(prev => prev ? { ...prev, favorites: previousFavorites } : prev);
+      alert("Failed to save to favorites due to network issues.");
     }
   };
 
