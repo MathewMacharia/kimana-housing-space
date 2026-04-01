@@ -15,10 +15,11 @@ interface ListingDetailProps {
   onToggleFavorite?: () => void;
   isFavorite?: boolean;
   onRequireAuth?: () => void;
+  isSavingFavorite?: boolean;
 }
 
 const ListingDetail: React.FC<ListingDetailProps> = ({
-  listing, onBack, onUnlock, isUnlocked, currentUser, onAddReview, onToggleFavorite, isFavorite, onRequireAuth
+  listing, onBack, onUnlock, isUnlocked, currentUser, onAddReview, onToggleFavorite, isFavorite, onRequireAuth, isSavingFavorite
 }) => {
   const [newRating, setNewRating] = useState(5);
   const [newComment, setNewComment] = useState('');
@@ -153,8 +154,8 @@ const ListingDetail: React.FC<ListingDetailProps> = ({
           <button onClick={handleShare} className="w-10 h-10 flex items-center justify-center rounded-full bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-400 active:scale-90 transition-transform">
             <i className="fas fa-share-alt"></i>
           </button>
-          <button onClick={onToggleFavorite} className={`w-10 h-10 flex items-center justify-center rounded-full transition-all active:scale-90 ${isFavorite ? 'bg-blue-600 text-white shadow-lg shadow-blue-100 dark:shadow-none' : 'bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-400'}`}>
-            <i className={`${isFavorite ? 'fas' : 'far'} fa-heart`}></i>
+          <button onClick={onToggleFavorite} disabled={isSavingFavorite} className={`w-10 h-10 flex items-center justify-center rounded-full transition-all ${isFavorite ? 'bg-blue-600 text-white shadow-lg shadow-blue-100 dark:shadow-none' : 'bg-slate-50 dark:bg-slate-900 text-slate-600 dark:text-slate-400'} ${isSavingFavorite ? 'opacity-70' : 'active:scale-90'}`}>
+            {isSavingFavorite ? <i className="fas fa-circle-notch animate-spin"></i> : <i className={`${isFavorite ? 'fas' : 'far'} fa-heart`}></i>}
           </button>
         </div>
       </div>

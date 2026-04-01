@@ -35,6 +35,7 @@ const App: React.FC = () => {
   const [exploringTown, setExploringTown] = useState<'Kimana' | 'Loitokitok' | 'Illasit' | 'Simba Cement' | null>(null);
   const [vacantOnly, setVacantOnly] = useState(false);
   const [globalLogo, setGlobalLogo] = useState<string | null>(null);
+  const [savingFavorites, setSavingFavorites] = useState<Record<string, boolean>>({});
 
   // Debounce search query to prevent laggy typing
   useEffect(() => {
@@ -300,6 +301,7 @@ const App: React.FC = () => {
                 onClick={() => setSelectedListing(listing)}
                 isFavorite={currentUser?.favorites?.includes(listing.id) || false}
                 onToggleFavorite={() => handleToggleFavorite(listing.id)}
+                isSavingFavorite={savingFavorites[listing.id]}
               />
             ))}
             {filteredListings.length === 0 && (
@@ -352,6 +354,7 @@ const App: React.FC = () => {
                 onClick={() => setSelectedListing(l)}
                 isFavorite={currentUser?.favorites?.includes(l.id) || false}
                 onToggleFavorite={() => handleToggleFavorite(l.id)}
+                isSavingFavorite={savingFavorites[l.id]}
               />
             ))}
           </div>
@@ -376,6 +379,7 @@ const App: React.FC = () => {
                 onClick={() => setSelectedListing(l)}
                 isFavorite={currentUser?.favorites?.includes(l.id) || false}
                 onToggleFavorite={() => handleToggleFavorite(l.id)}
+                isSavingFavorite={savingFavorites[l.id]}
               />
             ))}
           </div>
@@ -459,28 +463,19 @@ const App: React.FC = () => {
       setActiveTab('profile');
       return;
     }
-
-    const previousFavorites = currentUser.favorites || [];
     
-    // OPTIMISTIC UPDATE: instantly turn the heart blue without waiting for server lag
-    setCurrentUser(prev => {
-      if (!prev) return prev;
-      const faves = prev.favorites || [];
-      return {
-        ...prev,
-        favorites: faves.includes(listingId) ? faves.filter(id => id !== listingId) : [...faves, listingId]
-      };
-    });
+    if (savingFavorites[listingId]) return;
+
+    setSavingFavorites(prev => ({ ...prev, [listingId]: true }));
 
     try {
       const newFavoritesServer = await FirebaseService.toggleFavorite(currentUser, listingId);
-      // SYNC: ensure the server's truth matches 
       setCurrentUser(prev => prev ? { ...prev, favorites: newFavoritesServer } : prev);
     } catch (e) {
       console.error("Toggle favorite failed:", e);
-      // ROLLBACK: undo visual change if the database transaction actually failed
-      setCurrentUser(prev => prev ? { ...prev, favorites: previousFavorites } : prev);
       alert("Failed to save to favorites due to network issues.");
+    } finally {
+      setSavingFavorites(prev => ({ ...prev, [listingId]: false }));
     }
   };
 
@@ -528,6 +523,7 @@ const App: React.FC = () => {
                 onClick={() => setSelectedListing(listing)}
                 isFavorite={true}
                 onToggleFavorite={() => handleToggleFavorite(listing.id)}
+                isSavingFavorite={savingFavorites[listing.id]}
               />
             ))}
             {savedListings.length === 0 && (
@@ -588,6 +584,7 @@ const App: React.FC = () => {
           onAddReview={handleAddReview}
           isFavorite={currentUser?.favorites?.includes(selectedListing.id) || false}
           onToggleFavorite={() => handleToggleFavorite(selectedListing.id)}
+          isSavingFavorite={savingFavorites[selectedListing.id]}
           onRequireAuth={() => {
             alert("You must be logged in to perform this action.");
             setActiveTab('profile');

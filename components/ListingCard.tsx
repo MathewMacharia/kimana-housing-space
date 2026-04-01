@@ -8,6 +8,7 @@ interface ListingCardProps {
   variant?: 'grid' | 'horizontal';
   isFavorite?: boolean;
   onToggleFavorite?: () => void;
+  isSavingFavorite?: boolean;
 }
 
 const ListingCard: React.FC<ListingCardProps> = ({
@@ -15,7 +16,8 @@ const ListingCard: React.FC<ListingCardProps> = ({
   onClick,
   variant = 'grid',
   isFavorite,
-  onToggleFavorite
+  onToggleFavorite,
+  isSavingFavorite
 }) => {
   const containerClass = variant === 'horizontal'
     ? 'w-72 flex-shrink-0 snap-start'
@@ -43,9 +45,14 @@ const ListingCard: React.FC<ListingCardProps> = ({
               e.stopPropagation();
               onToggleFavorite();
             }}
-            className={`absolute top-3 right-3 w-8 h-8 rounded-full flex items-center justify-center transition-all active:scale-90 shadow-lg ${isFavorite ? 'bg-blue-600 text-white' : 'bg-white/90 dark:bg-slate-900/90 text-slate-400'}`}
+            disabled={isSavingFavorite}
+            className={`absolute top-3 right-3 w-8 h-8 rounded-full flex items-center justify-center transition-all shadow-lg ${isFavorite ? 'bg-blue-600 text-white' : 'bg-white/90 dark:bg-slate-900/90 text-slate-400'} ${isSavingFavorite ? 'opacity-70' : 'active:scale-90'}`}
           >
-            <i className={`${isFavorite ? 'fas' : 'far'} fa-heart text-[10px]`}></i>
+            {isSavingFavorite ? (
+              <i className="fas fa-circle-notch animate-spin text-[10px]"></i>
+            ) : (
+              <i className={`${isFavorite ? 'fas' : 'far'} fa-heart text-[10px]`}></i>
+            )}
           </button>
         )}
 

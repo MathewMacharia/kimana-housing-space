@@ -3,7 +3,8 @@ service cloud.firestore {
   match /databases/{database}/documents {
     // Helper to prevent rapid writes (Throttling)
     function isNotSpamming() {
-      return request.time > resource.data.updatedAt + duration.value(5, 's');
+      let lastUpdate = resource.data.get('updatedAt', null);
+      return lastUpdate == null || request.time > lastUpdate + duration.value(1, 's');
     }
 
     // Helper to check if the user is a designated administrator
@@ -50,9 +51,9 @@ service cloud.firestore {
     match /tenants/{userId} {
       allow read: if request.auth != null && (request.auth.uid == userId || isAdmin());
       allow create: if request.auth != null && request.auth.uid == userId
-                    && isValidProfileSchema(request.resource.data, 'tenant');
+                    && isValidProfileSchema(request.resource.data, 'TENANT');
       allow update: if request.auth != null && (request.auth.uid == userId || isAdmin()) && (
-        isAdmin() || (request.resource.data.role == resource.data.role && isValidProfileSchema(request.resource.data, 'tenant'))
+        isAdmin() || (request.resource.data.role == resource.data.role && isValidProfileSchema(request.resource.data, 'TENANT'))
       ) && isNotSpamming();
     }
     
@@ -60,9 +61,9 @@ service cloud.firestore {
     match /landlords/{userId} {
       allow read: if request.auth != null && (request.auth.uid == userId || isAdmin());
       allow create: if request.auth != null && request.auth.uid == userId
-                    && isValidProfileSchema(request.resource.data, 'landlord');
+                    && isValidProfileSchema(request.resource.data, 'LANDLORD');
       allow update: if request.auth != null && (request.auth.uid == userId || isAdmin()) && (
-        isAdmin() || (request.resource.data.role == resource.data.role && isValidProfileSchema(request.resource.data, 'landlord'))
+        isAdmin() || (request.resource.data.role == resource.data.role && isValidProfileSchema(request.resource.data, 'LANDLORD'))
       ) && isNotSpamming();
     }
     
