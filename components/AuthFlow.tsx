@@ -123,27 +123,31 @@ const AuthFlow: React.FC<AuthFlowProps> = ({ onAuthenticated, logoUrl }) => {
       return;
     }
 
-    if (!captchaToken) {
+    const isLocalDev = import.meta.env.DEV;
+
+    if (!isLocalDev && !captchaToken) {
       alert("Please complete the 'I'm not a robot' verification 🛡️");
       return;
     }
 
     setIsLoading(true);
 
-    try {
-      const verifyRecaptcha = httpsCallable(functions, 'verifyRecaptcha');
-      const recaptchaResult = await verifyRecaptcha({ token: captchaToken, action: 'signup' }) as any;
-      
-      if (!recaptchaResult.data?.valid || recaptchaResult.data?.score < 0.5) {
-        alert("Security check failed (Risk score too low). Please refresh and try again.");
-        setIsLoading(false);
-        return;
+    if (!isLocalDev) {
+      try {
+        const verifyRecaptcha = httpsCallable(functions, 'verifyRecaptcha');
+        const recaptchaResult = await verifyRecaptcha({ token: captchaToken, action: 'signup' }) as any;
+        
+        if (!recaptchaResult.data?.valid || recaptchaResult.data?.score < 0.5) {
+          alert("Security check failed (Risk score too low). Please refresh and try again.");
+          setIsLoading(false);
+          return;
+        }
+      } catch (err: any) {
+        console.error("reCAPTCHA validation error:", err);
+        // Graceful fallback: If the cloud function is undeployed or failing, 
+        // we log the error but allow the user to proceed so they aren't locked out.
+        console.warn("Verification service unavailable. Proceeding with signup fallback.");
       }
-    } catch (err: any) {
-      console.error("reCAPTCHA validation error:", err);
-      // Graceful fallback: If the cloud function is undeployed or failing, 
-      // we log the error but allow the user to proceed so they aren't locked out.
-      console.warn("Verification service unavailable. Proceeding with signup fallback.");
     }
 
     try {
@@ -191,27 +195,31 @@ const AuthFlow: React.FC<AuthFlowProps> = ({ onAuthenticated, logoUrl }) => {
       return;
     }
 
-    if (!captchaToken) {
+    const isLocalDev = import.meta.env.DEV;
+
+    if (!isLocalDev && !captchaToken) {
       alert("Please complete the 'I'm not a robot' verification 🛡️");
       return;
     }
 
     setIsLoading(true);
 
-    try {
-      const verifyRecaptcha = httpsCallable(functions, 'verifyRecaptcha');
-      const recaptchaResult = await verifyRecaptcha({ token: captchaToken, action: 'login' }) as any;
-      
-      if (!recaptchaResult.data?.valid || recaptchaResult.data?.score < 0.5) {
-        alert("Security check failed (Risk score too low). Please refresh and try again.");
-        setIsLoading(false);
-        return;
+    if (!isLocalDev) {
+      try {
+        const verifyRecaptcha = httpsCallable(functions, 'verifyRecaptcha');
+        const recaptchaResult = await verifyRecaptcha({ token: captchaToken, action: 'login' }) as any;
+        
+        if (!recaptchaResult.data?.valid || recaptchaResult.data?.score < 0.5) {
+          alert("Security check failed (Risk score too low). Please refresh and try again.");
+          setIsLoading(false);
+          return;
+        }
+      } catch (err: any) {
+        console.error("reCAPTCHA validation error:", err);
+        // Graceful fallback: If the cloud function is undeployed or failing, 
+        // we log the error but allow the user to proceed so they aren't locked out.
+        console.warn("Verification service unavailable. Proceeding with login fallback.");
       }
-    } catch (err: any) {
-      console.error("reCAPTCHA validation error:", err);
-      // Graceful fallback: If the cloud function is undeployed or failing, 
-      // we log the error but allow the user to proceed so they aren't locked out.
-      console.warn("Verification service unavailable. Proceeding with login fallback.");
     }
 
     try {
@@ -362,6 +370,14 @@ const AuthFlow: React.FC<AuthFlowProps> = ({ onAuthenticated, logoUrl }) => {
           <button type="submit" disabled={isLoading} className="w-full py-5 bg-blue-600 text-white font-black rounded-2xl shadow-xl active:scale-95 transition-all flex items-center justify-center gap-2 uppercase text-xs tracking-widest mt-4">
             {isLoading ? <i className="fas fa-circle-notch animate-spin"></i> : `Join as ${role}`}
           </button>
+          
+          <div className="pt-4 text-center">
+            <button type="button" onClick={() => setStep('login')}
+              className="text-blue-600 font-black text-[10px] uppercase tracking-widest"
+            >
+              Already have an account? Log In
+            </button>
+          </div>
         </form>
       </div>
     );

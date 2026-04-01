@@ -151,7 +151,10 @@ const App: React.FC = () => {
   const fetchInitialListings = useCallback(async () => {
     setIsLoading(true);
     try {
-      const { listings: newListings, lastDoc } = await FirebaseService.getPaginatedListings(20);
+      const fetchPromise = FirebaseService.getPaginatedListings(20);
+      const timeoutPromise = new Promise<{ listings: Listing[], lastDoc: QueryDocumentSnapshot | null }>((_, reject) => setTimeout(() => reject(new Error('Timeout')), 8000));
+      const { listings: newListings, lastDoc } = await Promise.race([fetchPromise, timeoutPromise]);
+      
       if (newListings.length > 0) {
         setListings(newListings);
         setLastVisible(lastDoc);
@@ -176,7 +179,10 @@ const App: React.FC = () => {
 
     setIsLoadingMore(true);
     try {
-      const { listings: newListings, lastDoc } = await FirebaseService.getPaginatedListings(20, lastVisible);
+      const fetchPromise = FirebaseService.getPaginatedListings(20, lastVisible);
+      const timeoutPromise = new Promise<{ listings: Listing[], lastDoc: QueryDocumentSnapshot | null }>((_, reject) => setTimeout(() => reject(new Error('Timeout')), 8000));
+      const { listings: newListings, lastDoc } = await Promise.race([fetchPromise, timeoutPromise]);
+      
       if (newListings.length > 0) {
         setListings(prev => [...prev, ...newListings]);
         setLastVisible(lastDoc);
