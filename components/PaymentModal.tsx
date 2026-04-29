@@ -1,6 +1,7 @@
 
 import React, { useState } from 'react';
 import { FirebaseService } from '../services/db';
+import { PaymentMethod } from '../types';
 
 interface PaymentModalProps {
   onClose: () => void;
@@ -11,8 +12,6 @@ interface PaymentModalProps {
   listingId: string;
   userEmail?: string;
 }
-
-type PaymentMethod = 'mpesa' | 'mpesa-till' | 'airtel' | 'card';
 
 const PaymentModal: React.FC<PaymentModalProps> = ({ onClose, onSuccess, title, amount, subtitle, listingId, userEmail }) => {
   const [method, setMethod] = useState<PaymentMethod>('card');

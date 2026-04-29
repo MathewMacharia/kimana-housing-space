@@ -322,7 +322,7 @@ export const FirebaseService = {
     }
   },
 
-  async updateGlobalSettings(updates: any): Promise<void> {
+  async updateGlobalSettings(updates: Record<string, unknown>): Promise<void> {
     try {
       if (!db || !auth.currentUser) return;
       const settingsRef = doc(db, "settings", "global");

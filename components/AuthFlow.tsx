@@ -1,6 +1,5 @@
-// Build trigger: re-rendering reCAPTCHA checkbox fix
 import React, { useState } from 'react';
-import { UserRole, User } from '../types';
+import { UserRole, User, AuthStep } from '../types';
 import { auth, googleProvider, functions } from '../firebase';
 import { FirebaseService } from '../services/db';
 import {
@@ -14,13 +13,10 @@ import { httpsCallable } from 'firebase/functions';
 import { LoggerService } from '../services/logger';
 import { SanitizerService } from '../services/sanitizer';
 
-
 interface AuthFlowProps {
   onAuthenticated: (user: User) => void;
   logoUrl?: string | null;
 }
-
-type AuthStep = 'welcome' | 'signup' | 'login';
 
 const AuthFlow: React.FC<AuthFlowProps> = ({ onAuthenticated, logoUrl }) => {
   const [step, setStep] = useState<AuthStep>('welcome');
@@ -61,6 +57,31 @@ const AuthFlow: React.FC<AuthFlowProps> = ({ onAuthenticated, logoUrl }) => {
     identifier: '',
     password: ''
   });
+
+  const validateCaptcha = async (action: string): Promise<boolean> => {
+    const isLocalDev = import.meta.env.DEV;
+    if (isLocalDev) return true;
+
+    if (!captchaToken) {
+      alert("Please complete the 'I'm not a robot' verification 🛡️");
+      return false;
+    }
+
+    try {
+      const verifyRecaptcha = httpsCallable(functions, 'verifyRecaptcha');
+      const recaptchaResult = await verifyRecaptcha({ token: captchaToken, action }) as any;
+      
+      if (!recaptchaResult.data?.valid || recaptchaResult.data?.score < 0.5) {
+        alert("Security check failed (Risk score too low). Please refresh and try again.");
+        return false;
+      }
+      return true;
+    } catch (err: any) {
+      console.error("reCAPTCHA validation error:", err);
+      console.warn(`Verification service unavailable. Proceeding with ${action} fallback.`);
+      return true; // Graceful fallback
+    }
+  };
 
   const handleGoogleLogin = async () => {
     setIsLoading(true);
@@ -123,31 +144,12 @@ const AuthFlow: React.FC<AuthFlowProps> = ({ onAuthenticated, logoUrl }) => {
       return;
     }
 
-    const isLocalDev = import.meta.env.DEV;
-
-    if (!isLocalDev && !captchaToken) {
-      alert("Please complete the 'I'm not a robot' verification 🛡️");
-      return;
-    }
-
     setIsLoading(true);
 
-    if (!isLocalDev) {
-      try {
-        const verifyRecaptcha = httpsCallable(functions, 'verifyRecaptcha');
-        const recaptchaResult = await verifyRecaptcha({ token: captchaToken, action: 'signup' }) as any;
-        
-        if (!recaptchaResult.data?.valid || recaptchaResult.data?.score < 0.5) {
-          alert("Security check failed (Risk score too low). Please refresh and try again.");
-          setIsLoading(false);
-          return;
-        }
-      } catch (err: any) {
-        console.error("reCAPTCHA validation error:", err);
-        // Graceful fallback: If the cloud function is undeployed or failing, 
-        // we log the error but allow the user to proceed so they aren't locked out.
-        console.warn("Verification service unavailable. Proceeding with signup fallback.");
-      }
+    const isCaptchaValid = await validateCaptcha('signup');
+    if (!isCaptchaValid) {
+      setIsLoading(false);
+      return;
     }
 
     try {
@@ -195,31 +197,12 @@ const AuthFlow: React.FC<AuthFlowProps> = ({ onAuthenticated, logoUrl }) => {
       return;
     }
 
-    const isLocalDev = import.meta.env.DEV;
-
-    if (!isLocalDev && !captchaToken) {
-      alert("Please complete the 'I'm not a robot' verification 🛡️");
-      return;
-    }
-
     setIsLoading(true);
 
-    if (!isLocalDev) {
-      try {
-        const verifyRecaptcha = httpsCallable(functions, 'verifyRecaptcha');
-        const recaptchaResult = await verifyRecaptcha({ token: captchaToken, action: 'login' }) as any;
-        
-        if (!recaptchaResult.data?.valid || recaptchaResult.data?.score < 0.5) {
-          alert("Security check failed (Risk score too low). Please refresh and try again.");
-          setIsLoading(false);
-          return;
-        }
-      } catch (err: any) {
-        console.error("reCAPTCHA validation error:", err);
-        // Graceful fallback: If the cloud function is undeployed or failing, 
-        // we log the error but allow the user to proceed so they aren't locked out.
-        console.warn("Verification service unavailable. Proceeding with login fallback.");
-      }
+    const isCaptchaValid = await validateCaptcha('login');
+    if (!isCaptchaValid) {
+      setIsLoading(false);
+      return;
     }
 
     try {

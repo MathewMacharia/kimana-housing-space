@@ -57,4 +57,4 @@ isSupported().then(supported => {
 
 console.log("✅ Firebase Services (including Cloud Functions) Registered");
 
-export { app, auth, db, storage, functions, googleProvider, httpsCallable };
+export { auth, db, storage, functions, googleProvider, httpsCallable };

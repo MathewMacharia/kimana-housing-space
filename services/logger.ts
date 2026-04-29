@@ -9,7 +9,7 @@ export enum LogLevel {
 }
 
 export const LoggerService = {
-  async logEvent(level: LogLevel, category: string, message: string, metadata: any = {}) {
+  async logEvent(level: LogLevel, category: string, message: string, metadata: Record<string, unknown> = {}) {
     try {
       if (!db) return;
       const logsRef = collection(db, "logs");
@@ -44,12 +44,13 @@ export const LoggerService = {
     );
   },
 
-  async logApiError(operation: string, error: any) {
+  async logApiError(operation: string, error: unknown) {
+    const errorObj = error as Record<string, unknown>;
     await this.logEvent(
       LogLevel.ERROR,
       "API_ERROR",
       `API Error during ${operation}`,
-      { errorMessage: error.message || error.toString(), code: error.code }
+      { errorMessage: error instanceof Error ? error.message : String(error), code: errorObj?.code }
     );
   }
 };

@@ -87,7 +87,6 @@ export const revealContact = onCall({
             lastUpdated: admin.firestore.FieldValue.serverTimestamp()
         }, { merge: true });
 
-        // Return ONLY the sensitive details
         return {
             name: landlordData?.name,
             phone: landlordData?.phone,
@@ -255,7 +254,7 @@ export const verifyRecaptcha = onCall({
             throw new HttpsError("internal", "Error communicating with reCAPTCHA service.");
         }
 
-        const data: any = await response.json();
+        const data = (await response.json()) as Record<string, any>;
         
         // Assert token is valid and score is acceptable
         if (data.tokenProperties?.valid) {
@@ -322,7 +321,7 @@ export const initializePayment = onCall({
             throw new HttpsError("internal", "Failed to initialize payment gateway.");
         }
 
-        const data: any = await response.json();
+        const data = (await response.json()) as Record<string, any>;
         
         if (!data.status) {
             throw new HttpsError("internal", "Paystack returned a failure status.");

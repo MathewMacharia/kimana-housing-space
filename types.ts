@@ -17,6 +17,10 @@ export enum UnitType {
   CAMPSITE = 'Campsite'
 }
 
+export type PaymentMethod = 'mpesa' | 'mpesa-till' | 'airtel' | 'card';
+
+export type AuthStep = 'welcome' | 'signup' | 'login';
+
 export interface Review {
   id: string;
   userId: string;

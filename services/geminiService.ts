@@ -31,7 +31,7 @@ export async function getEnhancedSearchTerms(query: string) {
  */
 export async function refineDescription(description: string) {
   if (!description || description.length < 10) return description;
-  
+
   try {
     // RATE LIMIT: Max 5 requests every hour to prevent abuse of the longer generation
     RateLimiter.checkLimit('AI_REFINE', 5, 60 * 60 * 1000);

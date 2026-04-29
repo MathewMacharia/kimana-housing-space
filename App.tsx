@@ -12,6 +12,7 @@ import AuthFlow from './components/AuthFlow';
 import Settings from './components/Settings';
 import ContactSupportModal from './components/ContactSupportModal';
 import { FirebaseService } from './services/db';
+import { LoggerService } from './services/logger';
 import { auth } from './firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { TRANSLATIONS, Locale } from './translations';
@@ -82,7 +83,6 @@ const App: React.FC = () => {
   }, [language]);
 
   const loadData = useCallback(async () => {
-    // Note: Listings are now handled by the real-time observer in useEffect below
     try {
       const settings = await FirebaseService.getGlobalSettings();
       if (settings?.logoUrl) {
@@ -149,12 +149,16 @@ const App: React.FC = () => {
   }, [currentUser, isAuthChecking, loadData]);
 
   // Paginated listing fetch
+  const fetchListingsWithTimeout = useCallback((limitCount: number, lastVisibleDoc?: QueryDocumentSnapshot | null) => {
+    const fetchPromise = FirebaseService.getPaginatedListings(limitCount, lastVisibleDoc);
+    const timeoutPromise = new Promise<{ listings: Listing[], lastDoc: QueryDocumentSnapshot | null }>((_, reject) => setTimeout(() => reject(new Error('Timeout')), 8000));
+    return Promise.race([fetchPromise, timeoutPromise]);
+  }, []);
+
   const fetchInitialListings = useCallback(async () => {
     setIsLoading(true);
     try {
-      const fetchPromise = FirebaseService.getPaginatedListings(20);
-      const timeoutPromise = new Promise<{ listings: Listing[], lastDoc: QueryDocumentSnapshot | null }>((_, reject) => setTimeout(() => reject(new Error('Timeout')), 8000));
-      const { listings: newListings, lastDoc } = await Promise.race([fetchPromise, timeoutPromise]);
+      const { listings: newListings, lastDoc } = await fetchListingsWithTimeout(20);
       
       if (newListings.length > 0) {
         setListings(newListings);
@@ -180,9 +184,7 @@ const App: React.FC = () => {
 
     setIsLoadingMore(true);
     try {
-      const fetchPromise = FirebaseService.getPaginatedListings(20, lastVisible);
-      const timeoutPromise = new Promise<{ listings: Listing[], lastDoc: QueryDocumentSnapshot | null }>((_, reject) => setTimeout(() => reject(new Error('Timeout')), 8000));
-      const { listings: newListings, lastDoc } = await Promise.race([fetchPromise, timeoutPromise]);
+      const { listings: newListings, lastDoc } = await fetchListingsWithTimeout(20, lastVisible);
       
       if (newListings.length > 0) {
         setListings(prev => [...prev, ...newListings]);
@@ -249,7 +251,13 @@ const App: React.FC = () => {
       setSelectedListing(updatedListing);
       try {
         await FirebaseService.updateListing(selectedListing.id, { reviews: updatedListing.reviews });
-      } catch (error) { }
+      } catch (error) {
+        console.error("Failed to update reviews", error);
+        LoggerService.logApiError("update_listing_reviews", error);
+        setListings(prev => prev.map(l => l.id === selectedListing.id ? selectedListing : l));
+        setSelectedListing(selectedListing);
+        alert("Failed to save review. Please try again.");
+      }
     }
   };
 
@@ -269,6 +277,37 @@ const App: React.FC = () => {
       </div>
     );
   }
+
+  const HomeSection = ({ 
+    title, icon, subtitle, onSelectType, listingsGroup 
+  }: {
+    title: string, icon: string, subtitle: string, onSelectType: () => void, listingsGroup: Listing[]
+  }) => (
+      <section className="space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-xl font-black text-slate-800 dark:text-slate-100 tracking-tight flex items-center gap-2">
+              <i className={`fas ${icon} text-blue-600`}></i> {title}
+            </h2>
+            <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">{subtitle}</p>
+          </div>
+          <button onClick={onSelectType} className="text-[10px] font-black text-blue-600 uppercase tracking-widest border border-blue-100 dark:border-blue-900 px-3 py-1.5 rounded-full bg-blue-50 dark:bg-blue-900/20 shadow-sm">{t('viewAll')}</button>
+        </div>
+        <div className="flex gap-4 overflow-x-auto no-scrollbar snap-x snap-mandatory -mx-4 px-4 pb-2">
+          {listingsGroup.map(l => (
+            <ListingCard
+              key={l.id}
+              listing={l}
+              variant="horizontal"
+              onClick={() => setSelectedListing(l)}
+              isFavorite={currentUser?.favorites?.includes(l.id) || false}
+              onToggleFavorite={() => handleToggleFavorite(l.id)}
+              isSavingFavorite={savingFavorites[l.id]}
+            />
+          ))}
+        </div>
+      </section>
+  );
 
   const renderHomeContent = () => {
     if (isLoading) {
@@ -335,55 +374,21 @@ const App: React.FC = () => {
           <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mt-1">Finding Your perfect place wherever you are</p>
         </div>
 
-        <section className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-xl font-black text-slate-800 dark:text-slate-100 tracking-tight flex items-center gap-2">
-                <i className="fas fa-shop text-blue-600"></i> {t('bizSpace')}
-              </h2>
-              <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">Premium Business Stalls</p>
-            </div>
-            <button onClick={() => setFilterType(UnitType.BUSINESS_HOUSE)} className="text-[10px] font-black text-blue-600 uppercase tracking-widest border border-blue-100 dark:border-blue-900 px-3 py-1.5 rounded-full bg-blue-50 dark:bg-blue-900/20 shadow-sm">{t('viewAll')}</button>
-          </div>
-          <div className="flex gap-4 overflow-x-auto no-scrollbar snap-x snap-mandatory -mx-4 px-4 pb-2">
-            {businessListings.map(l => (
-              <ListingCard
-                key={l.id}
-                listing={l}
-                variant="horizontal"
-                onClick={() => setSelectedListing(l)}
-                isFavorite={currentUser?.favorites?.includes(l.id) || false}
-                onToggleFavorite={() => handleToggleFavorite(l.id)}
-                isSavingFavorite={savingFavorites[l.id]}
-              />
-            ))}
-          </div>
-        </section>
+        <HomeSection
+          title={t('bizSpace')}
+          icon="fa-shop"
+          subtitle="Premium Business Stalls"
+          onSelectType={() => setFilterType(UnitType.BUSINESS_HOUSE)}
+          listingsGroup={businessListings}
+        />
 
-        <section className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-xl font-black text-slate-800 dark:text-slate-100 tracking-tight flex items-center gap-2">
-                <i className="fas fa-bed text-blue-600"></i> {t('topResidencies')}
-              </h2>
-              <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">Houses & Airbnb Units</p>
-            </div>
-            <button onClick={() => setFilterType('all')} className="text-[10px] font-black text-blue-600 uppercase tracking-widest border border-blue-100 dark:border-blue-900 px-3 py-1.5 rounded-full bg-blue-50 dark:bg-blue-900/20 shadow-sm">{t('viewAll')}</button>
-          </div>
-          <div className="flex gap-4 overflow-x-auto no-scrollbar snap-x snap-mandatory -mx-4 px-4 pb-2">
-            {residentialListings.map(l => (
-              <ListingCard
-                key={l.id}
-                listing={l}
-                variant="horizontal"
-                onClick={() => setSelectedListing(l)}
-                isFavorite={currentUser?.favorites?.includes(l.id) || false}
-                onToggleFavorite={() => handleToggleFavorite(l.id)}
-                isSavingFavorite={savingFavorites[l.id]}
-              />
-            ))}
-          </div>
-        </section>
+        <HomeSection
+          title={t('topResidencies')}
+          icon="fa-bed"
+          subtitle="Houses & Airbnb Units"
+          onSelectType={() => setFilterType('all')}
+          listingsGroup={residentialListings}
+        />
       </div>
     );
   };
@@ -548,8 +553,18 @@ const App: React.FC = () => {
         <LandlordDashboard
           listings={listings}
           onUpdateListing={async (l) => {
+            const originalListing = listings.find(x => x.id === l.id);
             setListings(prev => prev.map(x => x.id === l.id ? l : x));
-            try { await FirebaseService.updateListing(l.id, l); } catch (e) { }
+            try { 
+              await FirebaseService.updateListing(l.id, l); 
+            } catch (e) {
+              console.error("Failed to update listing", e);
+              LoggerService.logApiError("landlord_update_listing", e);
+              if (originalListing) {
+                setListings(prev => prev.map(x => x.id === l.id ? originalListing : x));
+              }
+              alert("Failed to update listing. Please check your connection.");
+            }
           }}
           onCreateListing={async (l) => {
             const id = await FirebaseService.createListing(l);

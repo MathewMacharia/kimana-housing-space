@@ -42,7 +42,6 @@ const ListingDetail: React.FC<ListingDetailProps> = ({
       const fetchLandlord = async () => {
         setIsLoadingLandlord(true);
         try {
-          // PHASE 3: Use secure Cloud Function for contact reveal
           const contact = await FirebaseService.revealLandlordContact(listing.id);
           if (contact) {
             setLandlordInfo(contact);

@@ -55,10 +55,7 @@ export const LOCATIONS_HIERARCHY = {
   ]
 };
 
-// Flattened list for legacy support and simple selects
-export const KIMANA_LOCATIONS = LOCATIONS_HIERARCHY['Kimana'];
-export const LOITOKITOK_LOCATIONS = LOCATIONS_HIERARCHY['Loitokitok'];
-export const ALL_AREAS = [...KIMANA_LOCATIONS, ...LOITOKITOK_LOCATIONS, ...LOCATIONS_HIERARCHY['Illasit'], ...LOCATIONS_HIERARCHY['Simba Cement']];
+// Legacy exports removed. Only LOCATIONS_HIERARCHY is used.
 
 const mockReviews: Review[] = [
   {

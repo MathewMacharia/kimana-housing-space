@@ -10,6 +10,15 @@ interface ImportMeta {
 
 declare global {
     interface Window {
-        grecaptcha: any;
+        grecaptcha: {
+            enterprise: {
+                ready: (callback: () => void) => void;
+                render: (elementId: string, options: {
+                    sitekey: string;
+                    callback: (token: string) => void;
+                    'expired-callback': () => void;
+                }) => void;
+            };
+        };
     }
 }
