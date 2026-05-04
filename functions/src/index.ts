@@ -286,6 +286,8 @@ export const initializePayment = onCall({
     const userId = request.auth.uid;
     const email = request.data.email || request.auth.token?.email || "tenant@masqani.com";
     const callbackUrl = request.data.callbackUrl;
+    // Default to 50 KES if not provided
+    const amount = request.data.amount || 50;
 
     if (!listingId) {
         throw new HttpsError("invalid-argument", "Listing ID is required.");
@@ -306,7 +308,7 @@ export const initializePayment = onCall({
             },
             body: JSON.stringify({
                 email: email,
-                amount: 100 * 100, // Ksh 100 in lowest denomination (10000)
+                amount: amount * 100, // Convert to subunit (cents/pesewas)
                 currency: "KES",
                 callback_url: callbackUrl,
                 metadata: {
@@ -341,7 +343,8 @@ export const initializePayment = onCall({
  * Handle incoming webhooks from Paystack.
  */
 export const paystackWebhook = onRequest({
-    region: "europe-west1"
+    region: "europe-west1",
+    invoker: "public"
 }, async (req, res) => {
     // Only accept POST requests
     if (req.method !== 'POST') {

@@ -42,6 +42,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ onClose, onSuccess, title, 
       const { authorizationUrl } = await FirebaseService.initializePaystackPayment(
         listingId,
         email,
+        amount,
         callbackUrl
       );
       
