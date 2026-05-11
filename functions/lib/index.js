@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.paystackWebhook = exports.initializePayment = exports.verifyRecaptcha = exports.refineDescription = exports.enhancedSearch = exports.revealContact = void 0;
+exports.paystackWebhook = exports.initMpesa = exports.verifyRecaptcha = exports.refineDescription = exports.enhancedSearch = exports.revealContact = void 0;
 const https_1 = require("firebase-functions/v2/https");
 const admin = require("firebase-admin");
 const genai_1 = require("@google/genai");
@@ -256,9 +256,8 @@ async function getDarajaToken() {
 }
 /**
  * Initialize a Daraja STK Push session for unlocking a listing.
- * (Named initializePayment to bypass IAM creation restrictions)
  */
-exports.initializePayment = (0, https_1.onRequest)({
+exports.initMpesa = (0, https_1.onRequest)({
     region: "europe-west1"
 }, async (req, res) => {
     // Handle CORS for local development testing

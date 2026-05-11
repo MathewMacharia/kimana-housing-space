@@ -43,7 +43,7 @@
         "rewrites": [
             {
                 "source": "/api/initializePayment",
-                "function": "initializePayment"
+                "function": "initMpesa"
             },
             {
                 "source": "/api/webhook",

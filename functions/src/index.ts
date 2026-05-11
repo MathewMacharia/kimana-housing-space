@@ -299,9 +299,8 @@ async function getDarajaToken(): Promise<string> {
 
 /**
  * Initialize a Daraja STK Push session for unlocking a listing.
- * (Named initializePayment to bypass IAM creation restrictions)
  */
-export const initializePayment = onRequest({
+export const initMpesa = onRequest({
     region: "europe-west1"
 }, async (req, res) => {
     // Handle CORS for local development testing
