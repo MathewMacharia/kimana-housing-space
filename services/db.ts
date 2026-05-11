@@ -234,13 +234,14 @@ export const FirebaseService = {
   },
 
   // Unlock Transaction logic
-  async initializePaystackPayment(listingId: string, email: string, amount: number, callbackUrl: string): Promise<{ authorizationUrl: string, reference: string }> {
+  async initializeMpesaPayment(listingId: string, phone: string, amount: number): Promise<{ checkoutRequestId: string, customerMessage: string }> {
     try {
-      const initFunc = httpsCallable(functions, 'initializePayment');
-      const result = await initFunc({ listingId, email, amount, callbackUrl });
-      return result.data as { authorizationUrl: string, reference: string };
+      const initFunc = httpsCallable(functions, 'initializeMpesaPayment');
+      // Pass the frontend URL just in case, though Daraja Webhook handles the actual logic
+      const result = await initFunc({ listingId, phone, amount });
+      return result.data as { checkoutRequestId: string, customerMessage: string };
     } catch (e: any) {
-      console.error("Cloud Function initializePayment failed:", e);
+      console.error("Cloud Function initializeMpesaPayment failed:", e);
       throw e;
     }
   },

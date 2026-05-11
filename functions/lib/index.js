@@ -1,13 +1,11 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.paystackWebhook = exports.initializePayment = exports.verifyRecaptcha = exports.refineDescription = exports.enhancedSearch = exports.revealContact = void 0;
+exports.mpesaWebhook = exports.initializeMpesaPayment = exports.verifyRecaptcha = exports.refineDescription = exports.enhancedSearch = exports.revealContact = void 0;
 const https_1 = require("firebase-functions/v2/https");
 const admin = require("firebase-admin");
 const genai_1 = require("@google/genai");
-const crypto = require("crypto");
 admin.initializeApp();
 exports.revealContact = (0, https_1.onCall)({
-
     concurrency: 80, // Allow 1 instance to handle up to 80 concurrent requests
     memory: "512MiB", // Valid v2 memory format
     timeoutSeconds: 30,
@@ -64,7 +62,6 @@ exports.revealContact = (0, https_1.onCall)({
             revealCount: revealCount + 1,
             lastUpdated: admin.firestore.FieldValue.serverTimestamp()
         }, { merge: true });
-        // Return ONLY the sensitive details
         return {
             name: landlordData?.name,
             phone: landlordData?.phone,
@@ -83,7 +80,6 @@ exports.revealContact = (0, https_1.onCall)({
  * Takes a messy user query and returns structured search terms.
  */
 exports.enhancedSearch = (0, https_1.onCall)({
-
     concurrency: 80,
     memory: "512MiB",
     timeoutSeconds: 30,
@@ -140,7 +136,6 @@ exports.enhancedSearch = (0, https_1.onCall)({
  * Polishes a raw property description into a professional and appealing marketing text.
  */
 exports.refineDescription = (0, https_1.onCall)({
-
     concurrency: 80,
     memory: "512MiB",
     timeoutSeconds: 30,
@@ -220,7 +215,7 @@ exports.verifyRecaptcha = (0, https_1.onCall)({
             console.error("reCAPTCHA API error:", response.status, await response.text());
             throw new https_1.HttpsError("internal", "Error communicating with reCAPTCHA service.");
         }
-        const data = await response.json();
+        const data = (await response.json());
         // Assert token is valid and score is acceptable
         if (data.tokenProperties?.valid) {
             const score = data.riskAnalysis?.score || 0;
@@ -237,9 +232,32 @@ exports.verifyRecaptcha = (0, https_1.onCall)({
     }
 });
 /**
- * Initialize a Paystack checkout session for unlocking a listing.
+ * Utility to generate Daraja OAuth token
  */
-exports.initializePayment = (0, https_1.onCall)({
+async function getDarajaToken() {
+    const consumerKey = process.env.DARAJA_CONSUMER_KEY;
+    const consumerSecret = process.env.DARAJA_CONSUMER_SECRET;
+    const env = process.env.DARAJA_ENVIRONMENT || "sandbox";
+    if (!consumerKey || !consumerSecret) {
+        throw new Error("Daraja credentials not configured.");
+    }
+    const baseUrl = env === "production" ? "https://api.safaricom.co.ke" : "https://sandbox.safaricom.co.ke";
+    const auth = Buffer.from(`${consumerKey}:${consumerSecret}`).toString('base64');
+    const response = await fetch(`${baseUrl}/oauth/v1/generate?grant_type=client_credentials`, {
+        headers: {
+            "Authorization": `Basic ${auth}`
+        }
+    });
+    if (!response.ok) {
+        throw new Error("Failed to generate Daraja token.");
+    }
+    const data = (await response.json());
+    return data.access_token;
+}
+/**
+ * Initialize a Daraja STK Push session for unlocking a listing.
+ */
+exports.initializeMpesaPayment = (0, https_1.onCall)({
     minInstances: 0,
     concurrency: 80,
     region: "europe-west1"
@@ -247,106 +265,149 @@ exports.initializePayment = (0, https_1.onCall)({
     if (!request.auth) {
         throw new https_1.HttpsError("unauthenticated", "User must be logged in to initialize payment.");
     }
-    const listingId = request.data.listingId;
+    const { listingId, phone, amount } = request.data;
     const userId = request.auth.uid;
-    const email = request.data.email || request.auth.token?.email || "tenant@masqani.com";
-    const callbackUrl = request.data.callbackUrl;
-    if (!listingId) {
-        throw new https_1.HttpsError("invalid-argument", "Listing ID is required.");
+    if (!listingId || !phone || !amount) {
+        throw new https_1.HttpsError("invalid-argument", "Listing ID, Phone, and Amount are required.");
     }
-    const secretKey = process.env.PAYSTACK_SECRET_KEY;
-    if (!secretKey) {
-        console.error("PAYSTACK_SECRET_KEY is not configured.");
+    // Format phone number to 254...
+    let formattedPhone = phone.replace(/\D/g, '');
+    if (formattedPhone.startsWith('0')) {
+        formattedPhone = `254${formattedPhone.substring(1)}`;
+    }
+    else if (formattedPhone.startsWith('7') || formattedPhone.startsWith('1')) {
+        formattedPhone = `254${formattedPhone}`;
+    }
+    if (!formattedPhone.startsWith('254') || formattedPhone.length !== 12) {
+        throw new https_1.HttpsError("invalid-argument", "Invalid phone number format.");
+    }
+    const passkey = process.env.DARAJA_PASSKEY;
+    const shortcode = process.env.DARAJA_SHORTCODE;
+    const env = process.env.DARAJA_ENVIRONMENT || "sandbox";
+    if (!passkey || !shortcode) {
         throw new https_1.HttpsError("internal", "Payment gateway is not configured.");
     }
     try {
-        const response = await fetch("https://api.paystack.co/transaction/initialize", {
+        const token = await getDarajaToken();
+        const baseUrl = env === "production" ? "https://api.safaricom.co.ke" : "https://sandbox.safaricom.co.ke";
+        // Generate Password
+        const timestamp = new Date().toISOString().replace(/[^0-9]/g, '').slice(0, 14); // YYYYMMDDHHmmss
+        const password = Buffer.from(`${shortcode}${passkey}${timestamp}`).toString('base64');
+        // Define Webhook URL based on the current deployed function region/project
+        // Instead of hardcoding the project ID, use the GCLOUD_PROJECT env var or fallback
+        const projectId = process.env.GCLOUD_PROJECT || "kimana-housing";
+        const webhookUrl = `https://europe-west1-${projectId}.cloudfunctions.net/mpesaWebhook`;
+        const stkPayload = {
+            BusinessShortCode: shortcode,
+            Password: password,
+            Timestamp: timestamp,
+            TransactionType: "CustomerPayBillOnline", // or CustomerBuyGoodsOnline for Till
+            Amount: amount, // KES amount is literal (e.g. 50)
+            PartyA: formattedPhone,
+            PartyB: shortcode,
+            PhoneNumber: formattedPhone,
+            CallBackURL: webhookUrl,
+            AccountReference: "Masqani Unlock",
+            TransactionDesc: `Unlock Listing ${listingId}`
+        };
+        const response = await fetch(`${baseUrl}/mpesa/stkpush/v1/processrequest`, {
             method: "POST",
             headers: {
-                "Authorization": `Bearer ${secretKey}`,
+                "Authorization": `Bearer ${token}`,
                 "Content-Type": "application/json"
             },
-            body: JSON.stringify({
-                email: email,
-                amount: 100 * 100, // Ksh 100 in lowest denomination (10000)
-                currency: "KES",
-                callback_url: callbackUrl,
-                metadata: {
-                    userId: userId,
-                    listingId: listingId
-                }
-            })
+            body: JSON.stringify(stkPayload)
         });
         if (!response.ok) {
-            console.error("Paystack API error:", response.status, await response.text());
-            throw new https_1.HttpsError("internal", "Failed to initialize payment gateway.");
+            console.error("Daraja API error:", response.status, await response.text());
+            throw new https_1.HttpsError("internal", "Failed to initialize M-PESA STK Push.");
         }
-        const data = await response.json();
-        if (!data.status) {
-            throw new https_1.HttpsError("internal", "Paystack returned a failure status.");
+        const data = (await response.json());
+        if (data.ResponseCode !== "0") {
+            throw new https_1.HttpsError("internal", "Safaricom rejected the request: " + data.ResponseDescription);
         }
+        // Save transaction to DB to link the CheckoutRequestID with userId and listingId
+        await admin.firestore().collection("mpesa_transactions").doc(data.CheckoutRequestID).set({
+            userId,
+            listingId,
+            amount,
+            phone: formattedPhone,
+            status: "pending",
+            createdAt: admin.firestore.FieldValue.serverTimestamp()
+        });
         return {
-            authorizationUrl: data.data.authorization_url,
-            reference: data.data.reference
+            checkoutRequestId: data.CheckoutRequestID,
+            customerMessage: data.CustomerMessage
         };
     }
     catch (error) {
-        console.error("initializePayment exception:", error);
-        throw new https_1.HttpsError("internal", "Error initializing payment.");
+        console.error("initializeMpesaPayment exception:", error);
+        throw new https_1.HttpsError("internal", error.message || "Error initializing payment.");
     }
 });
 /**
- * Handle incoming webhooks from Paystack.
+ * Handle incoming webhooks from Safaricom Daraja.
  */
-exports.paystackWebhook = (0, https_1.onRequest)({
-    region: "europe-west1"
+exports.mpesaWebhook = (0, https_1.onRequest)({
+    region: "europe-west1",
+    invoker: "public"
 }, async (req, res) => {
-    // Only accept POST requests
+    // Daraja sends a POST request
     if (req.method !== 'POST') {
         res.status(405).send("Method Not Allowed");
         return;
     }
-    const secretKey = process.env.PAYSTACK_SECRET_KEY;
-    if (!secretKey) {
-        console.error("PAYSTACK_SECRET_KEY is not configured.");
-        res.status(500).send("Server Configuration Error");
-        return;
-    }
-    // Verify Paystack Signature
-    const hash = crypto.createHmac('sha512', secretKey).update(JSON.stringify(req.body)).digest('hex');
-    const paystackSignature = req.headers['x-paystack-signature'];
-    if (hash !== paystackSignature) {
-        console.warn("Invalid Paystack webhook signature.");
-        res.status(403).send("Invalid Signature");
-        return;
-    }
-    // Process the event
-    const event = req.body;
-    // We only care about successful charges
-    if (event.event === 'charge.success') {
-        const data = event.data;
-        const metadata = data.metadata;
-        if (!metadata || !metadata.userId || !metadata.listingId) {
-            console.error("Missing metadata in Paystack charge.success event:", metadata);
-            res.status(400).send("Missing Metadata");
+    try {
+        const callbackData = req.body.Body?.stkCallback;
+        if (!callbackData) {
+            res.status(400).send("Invalid Payload");
             return;
         }
-        const { userId, listingId } = metadata;
-        try {
+        const checkoutRequestId = callbackData.CheckoutRequestID;
+        const resultCode = callbackData.ResultCode;
+        // Update transaction in DB
+        const transactionRef = admin.firestore().collection("mpesa_transactions").doc(checkoutRequestId);
+        const transactionDoc = await transactionRef.get();
+        if (!transactionDoc.exists) {
+            console.error("Transaction not found for CheckoutRequestID:", checkoutRequestId);
+            res.status(200).send("OK"); // Acknowledge to Safaricom anyway
+            return;
+        }
+        const transactionData = transactionDoc.data();
+        if (resultCode === 0) {
+            // Success!
+            const userId = transactionData?.userId;
+            const listingId = transactionData?.listingId;
+            // Mark transaction as success
+            await transactionRef.update({
+                status: "success",
+                resultDesc: callbackData.ResultDesc,
+                completedAt: admin.firestore.FieldValue.serverTimestamp()
+            });
             // Add the listing to the user's unlockedListings array
-            await admin.firestore().collection("tenants").doc(userId).set({
-                unlockedListings: admin.firestore.FieldValue.arrayUnion(listingId)
-            }, { merge: true });
-            console.log(`Successfully unlocked listing ${listingId} for user ${userId}`);
+            if (userId && listingId) {
+                await admin.firestore().collection("tenants").doc(userId).set({
+                    unlockedListings: admin.firestore.FieldValue.arrayUnion(listingId)
+                }, { merge: true });
+                console.log(`Successfully unlocked listing ${listingId} for user ${userId} via M-PESA`);
+            }
         }
-        catch (error) {
-            console.error("Error updating Firestore after payment:", error);
-            // Even if DB fails, return 200 to Paystack so they don't retry unnecessarily
-            res.status(200).send("Database Error (Acknowledged)");
-            return;
+        else {
+            // Failed
+            await transactionRef.update({
+                status: "failed",
+                resultCode: resultCode,
+                resultDesc: callbackData.ResultDesc,
+                completedAt: admin.firestore.FieldValue.serverTimestamp()
+            });
+            console.log(`M-PESA transaction failed for CheckoutRequestID: ${checkoutRequestId}. Reason: ${callbackData.ResultDesc}`);
         }
+        // Always return 200 to Safaricom
+        res.status(200).send("OK");
     }
-    // Respond with 200 OK to acknowledge receipt
-    res.status(200).send("OK");
+    catch (error) {
+        console.error("Error processing M-PESA webhook:", error);
+        res.status(500).send("Internal Server Error");
+    }
 });
 //# sourceMappingURL=index.js.map

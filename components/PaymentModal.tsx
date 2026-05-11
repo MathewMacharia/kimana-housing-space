@@ -1,7 +1,9 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { FirebaseService } from '../services/db';
 import { PaymentMethod } from '../types';
+import { doc, onSnapshot } from 'firebase/firestore';
+import { db } from '../firebase';
 
 interface PaymentModalProps {
   onClose: () => void;
@@ -14,42 +16,56 @@ interface PaymentModalProps {
 }
 
 const PaymentModal: React.FC<PaymentModalProps> = ({ onClose, onSuccess, title, amount, subtitle, listingId, userEmail }) => {
-  const [method, setMethod] = useState<PaymentMethod>('card');
+  const [method, setMethod] = useState<PaymentMethod>('mpesa');
   const [step, setStep] = useState<'details' | 'processing' | 'success' | 'error'>('details');
   const [phone, setPhone] = useState('');
-  const [cardNumber, setCardNumber] = useState('');
-  const [expiry, setExpiry] = useState('');
-  const [cvv, setCvv] = useState('');
+  const [checkoutId, setCheckoutId] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState('The transaction could not be completed. Please try again.');
+
+  // Listen for transaction status changes
+  useEffect(() => {
+    if (!checkoutId || step !== 'processing') return;
+
+    const unsub = onSnapshot(doc(db, "mpesa_transactions", checkoutId), (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        if (data.status === 'success') {
+          setStep('success');
+          setTimeout(() => {
+            onSuccess();
+          }, 2000);
+        } else if (data.status === 'failed') {
+          setErrorMessage(data.resultDesc || 'Transaction failed. Please try again.');
+          setStep('error');
+        }
+      }
+    });
+
+    return () => unsub();
+  }, [checkoutId, step, onSuccess]);
 
   const handlePay = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     
-    if (method === 'mpesa' && phone.length < 9) {
-      alert('Please enter a valid phone number');
-      return;
-    }
-    if (method === 'card' && (cardNumber.length < 16 || expiry.length < 4 || cvv.length < 3)) {
-      alert('Please enter valid card details');
+    if (phone.length < 9) {
+      alert('Please enter a valid Safaricom phone number');
       return;
     }
 
     setStep('processing');
 
     try {
-      const email = userEmail || 'tenant@masqani.com';
-      const callbackUrl = window.location.href; // Return to the exact same page
-      
-      const { authorizationUrl } = await FirebaseService.initializePaystackPayment(
+      const { checkoutRequestId } = await FirebaseService.initializeMpesaPayment(
         listingId,
-        email,
-        amount,
-        callbackUrl
+        phone,
+        amount
       );
       
-      // Redirect to Paystack's secure checkout page
-      window.location.href = authorizationUrl;
-    } catch (err) {
+      setCheckoutId(checkoutRequestId);
+      // Now the useEffect will listen for the status change
+    } catch (err: any) {
       console.error("Payment initialization failed:", err);
+      setErrorMessage(err.message || 'Payment initialization failed. Please try again.');
       setStep('error');
     }
   };
@@ -90,7 +106,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ onClose, onSuccess, title, 
             <h4 className="text-[11px] font-bold text-slate-500 tracking-wider">PAY WITH</h4>
           </div>
           <div className="flex-1 overflow-y-auto">
-            {(['mpesa', 'mpesa-till', 'airtel', 'card'] as PaymentMethod[]).map((m) => (
+            {(['mpesa'] as PaymentMethod[]).map((m) => (
               <button 
                 key={m}
                 onClick={() => setMethod(m)}
@@ -140,71 +156,20 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ onClose, onSuccess, title, 
                 </h3>
 
                 <form onSubmit={handlePay} className="space-y-4">
-                  {method === 'card' ? (
-                    <>
-                      <div className="border border-[#3eb2e6] rounded-md overflow-hidden bg-white shadow-sm ring-1 ring-[#3eb2e6]/20">
-                        <div className="p-3 border-b border-slate-200">
-                          <label className="text-[10px] font-bold text-[#3eb2e6] uppercase tracking-wider block mb-1">CARD NUMBER</label>
-                          <input 
-                            type="text" 
-                            placeholder="0000 0000 0000 0000" 
-                            className="w-full outline-none text-slate-700 text-base"
-                            value={cardNumber}
-                            onChange={(e) => setCardNumber(e.target.value.replace(/\D/g, '').substring(0, 16))}
-                          />
-                        </div>
-                        <div className="flex">
-                          <div className="w-1/2 p-3 border-r border-slate-200">
-                            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">CARD EXPIRY</label>
-                            <input 
-                              type="text" 
-                              placeholder="MM / YY" 
-                              className="w-full outline-none text-slate-700 text-base"
-                              value={expiry}
-                              onChange={(e) => setExpiry(e.target.value)}
-                            />
-                          </div>
-                          <div className="w-1/2 p-3 flex flex-col justify-center">
-                            <div className="flex justify-between items-center mb-1">
-                              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">CVV</label>
-                              <span className="text-[9px] text-slate-400 font-bold">HELP?</span>
-                            </div>
-                            <input 
-                              type="password" 
-                              placeholder="123" 
-                              maxLength={4}
-                              className="w-full outline-none text-slate-700 text-base tracking-widest"
-                              value={cvv}
-                              onChange={(e) => setCvv(e.target.value.replace(/\D/g, ''))}
-                            />
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-2 mt-4 ml-1">
-                        <input type="checkbox" id="save-card" className="w-4 h-4 rounded text-green-500 focus:ring-green-500 accent-[#48bb78] cursor-pointer" />
-                        <label htmlFor="save-card" className="text-[13px] text-slate-700 cursor-pointer">
-                          Save this card for faster checkouts
-                        </label>
-                        <span className="bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded ml-1">NEW</span>
-                      </div>
-                    </>
-                  ) : (
-                    <div className="border border-slate-300 rounded-md p-4 bg-white shadow-sm focus-within:border-[#48bb78] focus-within:ring-1 focus-within:ring-[#48bb78]/50 transition-all">
-                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-2">{getMethodTitle(method)} REGISTERED NUMBER</label>
-                      <div className="flex items-center">
-                        <span className="text-slate-400 mr-2 font-medium">+254</span>
-                        <input 
-                          type="tel" 
-                          placeholder="712 345 678" 
-                          className="w-full outline-none text-slate-700 text-lg"
-                          value={phone}
-                          onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))}
-                          autoFocus
-                        />
-                      </div>
+                  <div className="border border-slate-300 rounded-md p-4 bg-white shadow-sm focus-within:border-[#48bb78] focus-within:ring-1 focus-within:ring-[#48bb78]/50 transition-all">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-2">{getMethodTitle(method)} REGISTERED NUMBER</label>
+                    <div className="flex items-center">
+                      <span className="text-slate-400 mr-2 font-medium">+254</span>
+                      <input 
+                        type="tel" 
+                        placeholder="712 345 678" 
+                        className="w-full outline-none text-slate-700 text-lg"
+                        value={phone}
+                        onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))}
+                        autoFocus
+                      />
                     </div>
-                  )}
+                  </div>
 
                   <button 
                     type="submit" 
@@ -226,8 +191,8 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ onClose, onSuccess, title, 
               <div className="flex-1 flex flex-col items-center justify-center space-y-6 text-center animate-in fade-in">
                 <div className="w-16 h-16 border-4 border-slate-100 border-t-[#48bb78] rounded-full animate-spin"></div>
                 <div>
-                  <h4 className="font-bold text-slate-800 text-lg">Authorizing Payment</h4>
-                  <p className="text-sm text-slate-500 mt-2">Please complete the transaction on your device...</p>
+                  <h4 className="font-bold text-slate-800 text-lg">Check your phone</h4>
+                  <p className="text-sm text-slate-500 mt-2">Please enter your M-PESA PIN on the prompt sent to your phone...</p>
                 </div>
               </div>
             )}
@@ -251,7 +216,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ onClose, onSuccess, title, 
                 </div>
                 <div>
                   <h4 className="font-bold text-slate-800 text-xl">Payment Failed</h4>
-                  <p className="text-sm text-slate-500 mt-2 max-w-xs mx-auto">The transaction could not be completed. Please try again or use a different payment method.</p>
+                  <p className="text-sm text-slate-500 mt-2 max-w-xs mx-auto">{errorMessage}</p>
                 </div>
                 <button 
                   onClick={() => setStep('details')}
@@ -262,9 +227,9 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ onClose, onSuccess, title, 
               </div>
             )}
 
-            {/* Paystack footer badge */}
+            {/* Daraja footer badge */}
             <div className="mt-auto pt-4 flex justify-center items-center gap-1 text-[10px] text-slate-400 font-medium">
-              <i className="fas fa-lock text-[8px]"></i> Secured by <span className="font-black text-slate-700 ml-0.5 tracking-tight">paystack</span>
+              <i className="fas fa-lock text-[8px]"></i> Secured by <span className="font-black text-[#48bb78] ml-0.5 tracking-tight">Safaricom Daraja</span>
             </div>
           </div>
         </div>
