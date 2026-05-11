@@ -301,20 +301,46 @@ async function getDarajaToken(): Promise<string> {
  * Initialize a Daraja STK Push session for unlocking a listing.
  * (Named initializePayment to bypass IAM creation restrictions)
  */
-export const initializePayment = onCall({
-    minInstances: 0,
-    concurrency: 80,
+export const initializePayment = onRequest({
     region: "europe-west1"
-}, async (request) => {
-    if (!request.auth) {
-        throw new HttpsError("unauthenticated", "User must be logged in to initialize payment.");
+}, async (req, res) => {
+    // Handle CORS for local development testing
+    res.set('Access-Control-Allow-Origin', '*');
+    res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
+    res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+    if (req.method === 'OPTIONS') {
+        res.status(204).send('');
+        return;
     }
 
-    const { listingId, phone, amount } = request.data;
-    const userId = request.auth.uid;
+    if (req.method !== 'POST') {
+        res.status(405).send({ error: "Method Not Allowed" });
+        return;
+    }
+
+    // Manual Authentication Check since we moved away from onCall
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        res.status(401).send({ error: "User must be logged in to initialize payment." });
+        return;
+    }
+
+    let userId: string;
+    try {
+        const token = authHeader.split('Bearer ')[1];
+        const decodedToken = await admin.auth().verifyIdToken(token);
+        userId = decodedToken.uid;
+    } catch (e) {
+        res.status(401).send({ error: "Invalid authentication token." });
+        return;
+    }
+
+    const { listingId, phone, amount } = req.body.data || req.body;
 
     if (!listingId || !phone || !amount) {
-        throw new HttpsError("invalid-argument", "Listing ID, Phone, and Amount are required.");
+        res.status(400).send({ error: "Listing ID, Phone, and Amount are required." });
+        return;
     }
 
     // Format phone number to 254...
@@ -326,7 +352,8 @@ export const initializePayment = onCall({
     }
 
     if (!formattedPhone.startsWith('254') || formattedPhone.length !== 12) {
-        throw new HttpsError("invalid-argument", "Invalid phone number format.");
+        res.status(400).send({ error: "Invalid phone number format." });
+        return;
     }
 
     const passkey = process.env.DARAJA_PASSKEY;
@@ -334,7 +361,8 @@ export const initializePayment = onCall({
     const env = process.env.DARAJA_ENVIRONMENT || "sandbox";
     
     if (!passkey || !shortcode) {
-        throw new HttpsError("internal", "Payment gateway is not configured.");
+        res.status(500).send({ error: "Payment gateway is not configured." });
+        return;
     }
 
     try {
@@ -375,13 +403,15 @@ export const initializePayment = onCall({
 
         if (!response.ok) {
             console.error("Daraja API error:", response.status, await response.text());
-            throw new HttpsError("internal", "Failed to initialize M-PESA STK Push.");
+            res.status(500).send({ error: "Failed to initialize M-PESA STK Push." });
+            return;
         }
 
         const data = (await response.json()) as Record<string, any>;
         
         if (data.ResponseCode !== "0") {
-            throw new HttpsError("internal", "Safaricom rejected the request: " + data.ResponseDescription);
+            res.status(500).send({ error: "Safaricom rejected the request: " + data.ResponseDescription });
+            return;
         }
 
         // Save transaction to DB to link the CheckoutRequestID with userId and listingId
@@ -394,13 +424,16 @@ export const initializePayment = onCall({
             createdAt: admin.firestore.FieldValue.serverTimestamp()
         });
 
-        return {
-            checkoutRequestId: data.CheckoutRequestID,
-            customerMessage: data.CustomerMessage
-        };
+        // We wrap in { data: ... } to maintain compatibility with how the frontend expects the onCall result
+        res.status(200).send({
+            data: {
+                checkoutRequestId: data.CheckoutRequestID,
+                customerMessage: data.CustomerMessage
+            }
+        });
     } catch (error: any) {
         console.error("initializePayment exception:", error);
-        throw new HttpsError("internal", error.message || "Error initializing payment.");
+        res.status(500).send({ error: error.message || "Error initializing payment." });
     }
 });
 
