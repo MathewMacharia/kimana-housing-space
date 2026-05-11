@@ -345,10 +345,10 @@ export const initializePayment = onCall({
         const timestamp = new Date().toISOString().replace(/[^0-9]/g, '').slice(0, 14); // YYYYMMDDHHmmss
         const password = Buffer.from(`${shortcode}${passkey}${timestamp}`).toString('base64');
         
-        // Define Webhook URL based on the current deployed function region/project
-        // Instead of hardcoding the project ID, use the GCLOUD_PROJECT env var or fallback
+        // Define Webhook URL to use the Firebase Hosting proxy
+        // This is strictly required to bypass the Google Cloud Org Policy Domain Restricted Sharing
         const projectId = process.env.GCLOUD_PROJECT || "kimana-housing";
-        const webhookUrl = `https://europe-west1-${projectId}.cloudfunctions.net/mpesaWebhook`;
+        const webhookUrl = `https://${projectId}.web.app/api/webhook`;
 
         const stkPayload = {
             BusinessShortCode: shortcode,
@@ -409,8 +409,7 @@ export const initializePayment = onCall({
  * (Named paystackWebhook to bypass IAM creation restrictions)
  */
 export const paystackWebhook = onRequest({
-    region: "europe-west1",
-    invoker: "public"
+    region: "europe-west1"
 }, async (req, res) => {
     // Daraja sends a POST request
     if (req.method !== 'POST') {
