@@ -23,6 +23,7 @@
         "rules": "storage.rules"
     },
     "hosting": {
+        "site": "kimana-housing",
         "public": "dist",
         "ignore": [
             "firebase.json",
