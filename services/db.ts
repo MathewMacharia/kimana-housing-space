@@ -241,12 +241,10 @@ export const FirebaseService = {
 
       const idToken = await user.getIdToken();
       // Use proxy rewrite to bypass Domain Restricted Sharing policy
-      // In local dev, we hit localhost which doesn't have the proxy unless using firebase emulators
-      // We will point to the production web app proxy directly for local dev and prod
+      // We will point to the production web app proxy directly for ALL environments
+      // This ensures the frontend (Vercel/Localhost) routes through the Firebase API Gateway
       const projectId = "kimana-housing"; 
-      const baseUrl = window.location.hostname === "localhost" 
-        ? `https://${projectId}.web.app` 
-        : window.location.origin;
+      const baseUrl = `https://${projectId}.web.app`;
 
       const response = await fetch(`${baseUrl}/api/initializePayment`, {
         method: "POST",
