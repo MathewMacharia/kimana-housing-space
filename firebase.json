@@ -43,14 +43,6 @@
         ],
         "rewrites": [
             {
-                "source": "/api/initializePayment",
-                "function": "initMpesa"
-            },
-            {
-                "source": "/api/webhook",
-                "function": "paystackWebhook"
-            },
-            {
                 "source": "**",
                 "destination": "/index.html"
             }

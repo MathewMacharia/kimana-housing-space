@@ -1,8 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.paystackWebhook = exports.initMpesa = exports.verifyRecaptcha = exports.refineDescription = exports.enhancedSearch = exports.revealContact = void 0;
+exports.paystackWebhook = exports.initializePayment = exports.verifyRecaptcha = exports.refineDescription = exports.enhancedSearch = exports.revealContact = void 0;
 const https_1 = require("firebase-functions/v2/https");
-const functionsV1 = require("firebase-functions/v1");
 const admin = require("firebase-admin");
 const genai_1 = require("@google/genai");
 admin.initializeApp();
@@ -257,40 +256,20 @@ async function getDarajaToken() {
 }
 /**
  * Initialize a Daraja STK Push session for unlocking a listing.
+ * (Named initializePayment to bypass IAM creation restrictions)
  */
-exports.initMpesa = functionsV1.region("europe-west1").https.onRequest(async (req, res) => {
-    // Handle CORS for local development testing
-    res.set('Access-Control-Allow-Origin', '*');
-    res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
-    res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-    if (req.method === 'OPTIONS') {
-        res.status(204).send('');
-        return;
+exports.initializePayment = (0, https_1.onCall)({
+    minInstances: 0,
+    concurrency: 80,
+    region: "europe-west1"
+}, async (request) => {
+    if (!request.auth) {
+        throw new https_1.HttpsError("unauthenticated", "User must be logged in to initialize payment.");
     }
-    if (req.method !== 'POST') {
-        res.status(405).send({ error: "Method Not Allowed" });
-        return;
-    }
-    // Manual Authentication Check since we moved away from onCall
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        res.status(401).send({ error: "User must be logged in to initialize payment." });
-        return;
-    }
-    let userId;
-    try {
-        const token = authHeader.split('Bearer ')[1];
-        const decodedToken = await admin.auth().verifyIdToken(token);
-        userId = decodedToken.uid;
-    }
-    catch (e) {
-        res.status(401).send({ error: "Invalid authentication token." });
-        return;
-    }
-    const { listingId, phone, amount } = req.body.data || req.body;
+    const { listingId, phone, amount } = request.data;
+    const userId = request.auth.uid;
     if (!listingId || !phone || !amount) {
-        res.status(400).send({ error: "Listing ID, Phone, and Amount are required." });
-        return;
+        throw new https_1.HttpsError("invalid-argument", "Listing ID, Phone, and Amount are required.");
     }
     // Format phone number to 254...
     let formattedPhone = phone.replace(/\D/g, '');
@@ -301,15 +280,13 @@ exports.initMpesa = functionsV1.region("europe-west1").https.onRequest(async (re
         formattedPhone = `254${formattedPhone}`;
     }
     if (!formattedPhone.startsWith('254') || formattedPhone.length !== 12) {
-        res.status(400).send({ error: "Invalid phone number format." });
-        return;
+        throw new https_1.HttpsError("invalid-argument", "Invalid phone number format.");
     }
     const passkey = process.env.DARAJA_PASSKEY;
     const shortcode = process.env.DARAJA_SHORTCODE;
     const env = process.env.DARAJA_ENVIRONMENT || "sandbox";
     if (!passkey || !shortcode) {
-        res.status(500).send({ error: "Payment gateway is not configured." });
-        return;
+        throw new https_1.HttpsError("internal", "Payment gateway is not configured.");
     }
     try {
         const token = await getDarajaToken();
@@ -344,13 +321,11 @@ exports.initMpesa = functionsV1.region("europe-west1").https.onRequest(async (re
         });
         if (!response.ok) {
             console.error("Daraja API error:", response.status, await response.text());
-            res.status(500).send({ error: "Failed to initialize M-PESA STK Push." });
-            return;
+            throw new https_1.HttpsError("internal", "Failed to initialize M-PESA STK Push.");
         }
         const data = (await response.json());
         if (data.ResponseCode !== "0") {
-            res.status(500).send({ error: "Safaricom rejected the request: " + data.ResponseDescription });
-            return;
+            throw new https_1.HttpsError("internal", "Safaricom rejected the request: " + data.ResponseDescription);
         }
         // Save transaction to DB to link the CheckoutRequestID with userId and listingId
         await admin.firestore().collection("mpesa_transactions").doc(data.CheckoutRequestID).set({
@@ -361,24 +336,23 @@ exports.initMpesa = functionsV1.region("europe-west1").https.onRequest(async (re
             status: "pending",
             createdAt: admin.firestore.FieldValue.serverTimestamp()
         });
-        // We wrap in { data: ... } to maintain compatibility with how the frontend expects the onCall result
-        res.status(200).send({
-            data: {
-                checkoutRequestId: data.CheckoutRequestID,
-                customerMessage: data.CustomerMessage
-            }
-        });
+        return {
+            checkoutRequestId: data.CheckoutRequestID,
+            customerMessage: data.CustomerMessage
+        };
     }
     catch (error) {
         console.error("initializePayment exception:", error);
-        res.status(500).send({ error: error.message || "Error initializing payment." });
+        throw new https_1.HttpsError("internal", error.message || "Error initializing payment.");
     }
 });
 /**
  * Handle incoming webhooks from Safaricom Daraja.
  * (Named paystackWebhook to bypass IAM creation restrictions)
  */
-exports.paystackWebhook = functionsV1.region("europe-west1").https.onRequest(async (req, res) => {
+exports.paystackWebhook = (0, https_1.onRequest)({
+    region: "europe-west1"
+}, async (req, res) => {
     // Daraja sends a POST request
     if (req.method !== 'POST') {
         res.status(405).send("Method Not Allowed");

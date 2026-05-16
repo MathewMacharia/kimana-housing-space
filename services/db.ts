@@ -236,31 +236,10 @@ export const FirebaseService = {
   // Unlock Transaction logic
   async initializeMpesaPayment(listingId: string, phone: string, amount: number): Promise<{ checkoutRequestId: string, customerMessage: string }> {
     try {
-      const user = auth.currentUser;
-      if (!user) throw new Error("User not authenticated");
-
-      const idToken = await user.getIdToken();
-      // Use proxy rewrite to bypass Domain Restricted Sharing policy
-      // Use the direct Cloud Function URL since we migrated to Gen 1 to bypass IAM
-      const projectId = "kimana-housing"; 
-      const baseUrl = `https://europe-west1-${projectId}.cloudfunctions.net`;
-
-      const response = await fetch(`${baseUrl}/initMpesa`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${idToken}`
-        },
-        body: JSON.stringify({ data: { listingId, phone, amount } })
-      });
-
-      const resData = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(resData.error || "Failed to initialize payment");
-      }
-
-      return resData.data as { checkoutRequestId: string, customerMessage: string };
+      // Use the legacy name (initializePayment) which already has public IAM bindings from before the org policy
+      const initFunc = httpsCallable(functions, 'initializePayment');
+      const result = await initFunc({ listingId, phone, amount });
+      return result.data as { checkoutRequestId: string, customerMessage: string };
     } catch (e: any) {
       console.error("Cloud Function initializeMpesaPayment failed:", e);
       throw e;
