@@ -1,4 +1,5 @@
-import { onCall, HttpsError, onRequest } from "firebase-functions/v2/https";
+import { onCall, HttpsError } from "firebase-functions/v2/https";
+import * as functionsV1 from "firebase-functions/v1";
 import * as admin from "firebase-admin";
 import { GoogleGenAI, Type } from "@google/genai";
 admin.initializeApp();
@@ -300,9 +301,7 @@ async function getDarajaToken(): Promise<string> {
 /**
  * Initialize a Daraja STK Push session for unlocking a listing.
  */
-export const initMpesa = onRequest({
-    region: "europe-west1"
-}, async (req, res) => {
+export const initMpesa = functionsV1.region("europe-west1").https.onRequest(async (req, res) => {
     // Handle CORS for local development testing
     res.set('Access-Control-Allow-Origin', '*');
     res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -440,9 +439,7 @@ export const initMpesa = onRequest({
  * Handle incoming webhooks from Safaricom Daraja.
  * (Named paystackWebhook to bypass IAM creation restrictions)
  */
-export const paystackWebhook = onRequest({
-    region: "europe-west1"
-}, async (req, res) => {
+export const paystackWebhook = functionsV1.region("europe-west1").https.onRequest(async (req, res) => {
     // Daraja sends a POST request
     if (req.method !== 'POST') {
         res.status(405).send("Method Not Allowed");

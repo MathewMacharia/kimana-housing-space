@@ -241,12 +241,11 @@ export const FirebaseService = {
 
       const idToken = await user.getIdToken();
       // Use proxy rewrite to bypass Domain Restricted Sharing policy
-      // We will point to the production web app proxy directly for ALL environments
-      // This ensures the frontend (Vercel/Localhost) routes through the Firebase API Gateway
+      // Use the direct Cloud Function URL since we migrated to Gen 1 to bypass IAM
       const projectId = "kimana-housing"; 
-      const baseUrl = `https://${projectId}.web.app`;
+      const baseUrl = `https://europe-west1-${projectId}.cloudfunctions.net`;
 
-      const response = await fetch(`${baseUrl}/api/initializePayment`, {
+      const response = await fetch(`${baseUrl}/initMpesa`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

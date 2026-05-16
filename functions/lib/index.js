@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.paystackWebhook = exports.initMpesa = exports.verifyRecaptcha = exports.refineDescription = exports.enhancedSearch = exports.revealContact = void 0;
 const https_1 = require("firebase-functions/v2/https");
+const functionsV1 = require("firebase-functions/v1");
 const admin = require("firebase-admin");
 const genai_1 = require("@google/genai");
 admin.initializeApp();
@@ -257,9 +258,7 @@ async function getDarajaToken() {
 /**
  * Initialize a Daraja STK Push session for unlocking a listing.
  */
-exports.initMpesa = (0, https_1.onRequest)({
-    region: "europe-west1"
-}, async (req, res) => {
+exports.initMpesa = functionsV1.region("europe-west1").https.onRequest(async (req, res) => {
     // Handle CORS for local development testing
     res.set('Access-Control-Allow-Origin', '*');
     res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -379,9 +378,7 @@ exports.initMpesa = (0, https_1.onRequest)({
  * Handle incoming webhooks from Safaricom Daraja.
  * (Named paystackWebhook to bypass IAM creation restrictions)
  */
-exports.paystackWebhook = (0, https_1.onRequest)({
-    region: "europe-west1"
-}, async (req, res) => {
+exports.paystackWebhook = functionsV1.region("europe-west1").https.onRequest(async (req, res) => {
     // Daraja sends a POST request
     if (req.method !== 'POST') {
         res.status(405).send("Method Not Allowed");
