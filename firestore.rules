@@ -16,6 +16,11 @@ service cloud.firestore {
       );
     }
 
+    // Helper to check if the user is the backend webhook service account
+    function isWebhook() {
+      return request.auth != null && request.auth.uid == "M9iHpTGXgZZY4vtEw1TC4dwmFBD3";
+    }
+
     // SCHEMA VALIDATORS
     function isValidListingSchema(docData) {
       return docData.keys().hasAll(['title', 'description', 'price', 'type', 'location', 'landlordId'])
@@ -49,12 +54,12 @@ service cloud.firestore {
     
     // 2. Tenants: Users can only read/write their own profiles
     match /tenants/{userId} {
-      allow read: if request.auth != null && (request.auth.uid == userId || isAdmin());
+      allow read: if request.auth != null && (request.auth.uid == userId || isAdmin() || isWebhook());
       allow create: if request.auth != null && request.auth.uid == userId
                     && isValidProfileSchema(request.resource.data, 'TENANT');
-      allow update: if request.auth != null && (request.auth.uid == userId || isAdmin()) && (
-        isAdmin() || (request.resource.data.role == resource.data.role && isValidProfileSchema(request.resource.data, 'TENANT'))
-      ) && isNotSpamming();
+      allow update: if request.auth != null && (request.auth.uid == userId || isAdmin() || isWebhook()) && (
+        isAdmin() || isWebhook() || (request.resource.data.role == resource.data.role && isValidProfileSchema(request.resource.data, 'TENANT'))
+      ) && (isWebhook() || isNotSpamming());
     }
     
     // 3. Landlords: Users can only read/write their own profiles
@@ -77,6 +82,18 @@ service cloud.firestore {
     match /logs/{logId} {
       allow create: if true;
       allow read, update, delete: if false;
+    }
+
+    // 6. M-PESA Requests: Users can create and read their own
+    match /mpesa_requests/{requestId} {
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      allow read: if request.auth != null && resource.data.userId == request.auth.uid;
+    }
+
+    // 7. M-PESA Transactions: Users can read their own, Webhook can read/write all
+    match /mpesa_transactions/{transactionId} {
+      allow read: if request.auth != null && resource.data.userId == request.auth.uid;
+      allow read, write: if isWebhook();
     }
   }
 }
