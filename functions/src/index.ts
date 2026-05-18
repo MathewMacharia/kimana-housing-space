@@ -1,5 +1,5 @@
 import { onCall, HttpsError } from "firebase-functions/v2/https";
-import { onDocumentCreated } from "firebase-functions/v2/firestore";
+import * as functionsV1 from "firebase-functions/v1";
 import * as admin from "firebase-admin";
 import { GoogleGenAI, Type } from "@google/genai";
 admin.initializeApp();
@@ -299,18 +299,12 @@ async function getDarajaToken(): Promise<string> {
 }
 
 /**
- * Initialize a Daraja STK Push session via a Firestore trigger.
- * This completely bypasses Cloud Run HTTP constraints.
+ * Initialize a Daraja STK Push session via a Gen 1 Firestore trigger.
+ * This bypasses both Cloud Run HTTP constraints AND Eventarc IAM constraints.
  */
-export const processMpesaRequest = onDocumentCreated({
-    document: "mpesa_requests/{requestId}",
-    region: "europe-west1"
-}, async (event) => {
-    const snapshot = event.data;
-    if (!snapshot) {
-        console.log("No data associated with the event");
-        return;
-    }
+export const processMpesaRequest = functionsV1.region("europe-west1").firestore
+    .document("mpesa_requests/{requestId}")
+    .onCreate(async (snapshot, context) => {
 
     const data = snapshot.data();
     const { listingId, phone, amount, userId, status } = data;
@@ -402,7 +396,7 @@ export const processMpesaRequest = onDocumentCreated({
             amount,
             phone: formattedPhone,
             status: "pending",
-            requestId: event.params.requestId,
+            requestId: context.params.requestId,
             createdAt: admin.firestore.FieldValue.serverTimestamp()
         });
 

@@ -2,7 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.processMpesaRequest = exports.verifyRecaptcha = exports.refineDescription = exports.enhancedSearch = exports.revealContact = void 0;
 const https_1 = require("firebase-functions/v2/https");
-const firestore_1 = require("firebase-functions/v2/firestore");
+const functionsV1 = require("firebase-functions/v1");
 const admin = require("firebase-admin");
 const genai_1 = require("@google/genai");
 admin.initializeApp();
@@ -256,18 +256,12 @@ async function getDarajaToken() {
     return data.access_token;
 }
 /**
- * Initialize a Daraja STK Push session via a Firestore trigger.
- * This completely bypasses Cloud Run HTTP constraints.
+ * Initialize a Daraja STK Push session via a Gen 1 Firestore trigger.
+ * This bypasses both Cloud Run HTTP constraints AND Eventarc IAM constraints.
  */
-exports.processMpesaRequest = (0, firestore_1.onDocumentCreated)({
-    document: "mpesa_requests/{requestId}",
-    region: "europe-west1"
-}, async (event) => {
-    const snapshot = event.data;
-    if (!snapshot) {
-        console.log("No data associated with the event");
-        return;
-    }
+exports.processMpesaRequest = functionsV1.region("europe-west1").firestore
+    .document("mpesa_requests/{requestId}")
+    .onCreate(async (snapshot, context) => {
     const data = snapshot.data();
     const { listingId, phone, amount, userId, status } = data;
     // Only process if status is pending
@@ -345,7 +339,7 @@ exports.processMpesaRequest = (0, firestore_1.onDocumentCreated)({
             amount,
             phone: formattedPhone,
             status: "pending",
-            requestId: event.params.requestId,
+            requestId: context.params.requestId,
             createdAt: admin.firestore.FieldValue.serverTimestamp()
         });
         // Update the original request document to signal the frontend
