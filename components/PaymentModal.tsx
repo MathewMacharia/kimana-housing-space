@@ -19,10 +19,32 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ onClose, onSuccess, title, 
   const [method, setMethod] = useState<PaymentMethod>('mpesa');
   const [step, setStep] = useState<'details' | 'processing' | 'success' | 'error'>('details');
   const [phone, setPhone] = useState('');
+  const [requestId, setRequestId] = useState<string | null>(null);
   const [checkoutId, setCheckoutId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState('The transaction could not be completed. Please try again.');
 
-  // Listen for transaction status changes
+  // Listen for initialization response (Step 1)
+  useEffect(() => {
+    if (!requestId || checkoutId || step !== 'processing') return;
+
+    const unsub = onSnapshot(doc(db, "mpesa_requests", requestId), (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        if (data.status === 'sent' && data.checkoutRequestId) {
+          // Initialization succeeded! Safaricom STK prompt is on phone.
+          // Now listen for the actual transaction completion.
+          setCheckoutId(data.checkoutRequestId);
+        } else if (data.status === 'failed') {
+          setErrorMessage(data.error || 'Failed to initialize payment. Please try again.');
+          setStep('error');
+        }
+      }
+    });
+
+    return () => unsub();
+  }, [requestId, checkoutId, step]);
+
+  // Listen for transaction status changes (Step 2)
   useEffect(() => {
     if (!checkoutId || step !== 'processing') return;
 
@@ -55,14 +77,14 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ onClose, onSuccess, title, 
     setStep('processing');
 
     try {
-      const { checkoutRequestId } = await FirebaseService.initializeMpesaPayment(
+      const reqId = await FirebaseService.initializeMpesaPayment(
         listingId,
         phone,
         amount
       );
       
-      setCheckoutId(checkoutRequestId);
-      // Now the useEffect will listen for the status change
+      setRequestId(reqId);
+      // Now the first useEffect will listen for the initialization status
     } catch (err: any) {
       console.error("Payment initialization failed:", err);
       setErrorMessage(err.message || 'Payment initialization failed. Please try again.');

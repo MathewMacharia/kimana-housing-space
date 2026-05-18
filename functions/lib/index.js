@@ -1,7 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.paystackWebhook = exports.initializePayment = exports.verifyRecaptcha = exports.refineDescription = exports.enhancedSearch = exports.revealContact = void 0;
+exports.processMpesaRequest = exports.verifyRecaptcha = exports.refineDescription = exports.enhancedSearch = exports.revealContact = void 0;
 const https_1 = require("firebase-functions/v2/https");
+const firestore_1 = require("firebase-functions/v2/firestore");
 const admin = require("firebase-admin");
 const genai_1 = require("@google/genai");
 admin.initializeApp();
@@ -255,21 +256,29 @@ async function getDarajaToken() {
     return data.access_token;
 }
 /**
- * Initialize a Daraja STK Push session for unlocking a listing.
- * (Named initializePayment to bypass IAM creation restrictions)
+ * Initialize a Daraja STK Push session via a Firestore trigger.
+ * This completely bypasses Cloud Run HTTP constraints.
  */
-exports.initializePayment = (0, https_1.onCall)({
-    minInstances: 0,
-    concurrency: 80,
+exports.processMpesaRequest = (0, firestore_1.onDocumentCreated)({
+    document: "mpesa_requests/{requestId}",
     region: "europe-west1"
-}, async (request) => {
-    if (!request.auth) {
-        throw new https_1.HttpsError("unauthenticated", "User must be logged in to initialize payment.");
+}, async (event) => {
+    const snapshot = event.data;
+    if (!snapshot) {
+        console.log("No data associated with the event");
+        return;
     }
-    const { listingId, phone, amount } = request.data;
-    const userId = request.auth.uid;
-    if (!listingId || !phone || !amount) {
-        throw new https_1.HttpsError("invalid-argument", "Listing ID, Phone, and Amount are required.");
+    const data = snapshot.data();
+    const { listingId, phone, amount, userId, status } = data;
+    // Only process if status is pending
+    if (status !== 'pending')
+        return;
+    if (!listingId || !phone || !amount || !userId) {
+        await snapshot.ref.update({
+            status: 'failed',
+            error: "Missing required fields: Listing ID, Phone, Amount, or User ID."
+        });
+        return;
     }
     // Format phone number to 254...
     let formattedPhone = phone.replace(/\D/g, '');
@@ -280,13 +289,15 @@ exports.initializePayment = (0, https_1.onCall)({
         formattedPhone = `254${formattedPhone}`;
     }
     if (!formattedPhone.startsWith('254') || formattedPhone.length !== 12) {
-        throw new https_1.HttpsError("invalid-argument", "Invalid phone number format.");
+        await snapshot.ref.update({ status: 'failed', error: "Invalid phone number format." });
+        return;
     }
     const passkey = process.env.DARAJA_PASSKEY;
     const shortcode = process.env.DARAJA_SHORTCODE;
     const env = process.env.DARAJA_ENVIRONMENT || "sandbox";
     if (!passkey || !shortcode) {
-        throw new https_1.HttpsError("internal", "Payment gateway is not configured.");
+        await snapshot.ref.update({ status: 'failed', error: "Payment gateway is not configured." });
+        return;
     }
     try {
         const token = await getDarajaToken();
@@ -294,10 +305,8 @@ exports.initializePayment = (0, https_1.onCall)({
         // Generate Password
         const timestamp = new Date().toISOString().replace(/[^0-9]/g, '').slice(0, 14); // YYYYMMDDHHmmss
         const password = Buffer.from(`${shortcode}${passkey}${timestamp}`).toString('base64');
-        // Define Webhook URL to use the Firebase Hosting proxy
-        // This is strictly required to bypass the Google Cloud Org Policy Domain Restricted Sharing
-        const projectId = process.env.GCLOUD_PROJECT || "kimana-housing";
-        const webhookUrl = `https://${projectId}.web.app/api/webhook`;
+        // Use Vercel Webhook URL
+        const webhookUrl = `https://masqani.com/api/webhook`;
         const stkPayload = {
             BusinessShortCode: shortcode,
             Password: password,
@@ -321,94 +330,34 @@ exports.initializePayment = (0, https_1.onCall)({
         });
         if (!response.ok) {
             console.error("Daraja API error:", response.status, await response.text());
-            throw new https_1.HttpsError("internal", "Failed to initialize M-PESA STK Push.");
+            await snapshot.ref.update({ status: 'failed', error: "Failed to initialize M-PESA STK Push." });
+            return;
         }
-        const data = (await response.json());
-        if (data.ResponseCode !== "0") {
-            throw new https_1.HttpsError("internal", "Safaricom rejected the request: " + data.ResponseDescription);
+        const responseData = (await response.json());
+        if (responseData.ResponseCode !== "0") {
+            await snapshot.ref.update({ status: 'failed', error: "Safaricom rejected: " + responseData.ResponseDescription });
+            return;
         }
         // Save transaction to DB to link the CheckoutRequestID with userId and listingId
-        await admin.firestore().collection("mpesa_transactions").doc(data.CheckoutRequestID).set({
+        await admin.firestore().collection("mpesa_transactions").doc(responseData.CheckoutRequestID).set({
             userId,
             listingId,
             amount,
             phone: formattedPhone,
             status: "pending",
+            requestId: event.params.requestId,
             createdAt: admin.firestore.FieldValue.serverTimestamp()
         });
-        return {
-            checkoutRequestId: data.CheckoutRequestID,
-            customerMessage: data.CustomerMessage
-        };
+        // Update the original request document to signal the frontend
+        await snapshot.ref.update({
+            status: 'sent',
+            checkoutRequestId: responseData.CheckoutRequestID,
+            customerMessage: responseData.CustomerMessage
+        });
     }
     catch (error) {
-        console.error("initializePayment exception:", error);
-        throw new https_1.HttpsError("internal", error.message || "Error initializing payment.");
-    }
-});
-/**
- * Handle incoming webhooks from Safaricom Daraja.
- * (Named paystackWebhook to bypass IAM creation restrictions)
- */
-exports.paystackWebhook = (0, https_1.onRequest)({
-    region: "europe-west1"
-}, async (req, res) => {
-    // Daraja sends a POST request
-    if (req.method !== 'POST') {
-        res.status(405).send("Method Not Allowed");
-        return;
-    }
-    try {
-        const callbackData = req.body.Body?.stkCallback;
-        if (!callbackData) {
-            res.status(400).send("Invalid Payload");
-            return;
-        }
-        const checkoutRequestId = callbackData.CheckoutRequestID;
-        const resultCode = callbackData.ResultCode;
-        // Update transaction in DB
-        const transactionRef = admin.firestore().collection("mpesa_transactions").doc(checkoutRequestId);
-        const transactionDoc = await transactionRef.get();
-        if (!transactionDoc.exists) {
-            console.error("Transaction not found for CheckoutRequestID:", checkoutRequestId);
-            res.status(200).send("OK"); // Acknowledge to Safaricom anyway
-            return;
-        }
-        const transactionData = transactionDoc.data();
-        if (resultCode === 0) {
-            // Success!
-            const userId = transactionData?.userId;
-            const listingId = transactionData?.listingId;
-            // Mark transaction as success
-            await transactionRef.update({
-                status: "success",
-                resultDesc: callbackData.ResultDesc,
-                completedAt: admin.firestore.FieldValue.serverTimestamp()
-            });
-            // Add the listing to the user's unlockedListings array
-            if (userId && listingId) {
-                await admin.firestore().collection("tenants").doc(userId).set({
-                    unlockedListings: admin.firestore.FieldValue.arrayUnion(listingId)
-                }, { merge: true });
-                console.log(`Successfully unlocked listing ${listingId} for user ${userId} via M-PESA`);
-            }
-        }
-        else {
-            // Failed
-            await transactionRef.update({
-                status: "failed",
-                resultCode: resultCode,
-                resultDesc: callbackData.ResultDesc,
-                completedAt: admin.firestore.FieldValue.serverTimestamp()
-            });
-            console.log(`M-PESA transaction failed for CheckoutRequestID: ${checkoutRequestId}. Reason: ${callbackData.ResultDesc}`);
-        }
-        // Always return 200 to Safaricom
-        res.status(200).send("OK");
-    }
-    catch (error) {
-        console.error("Error processing M-PESA webhook:", error);
-        res.status(500).send("Internal Server Error");
+        console.error("processMpesaRequest exception:", error);
+        await snapshot.ref.update({ status: 'failed', error: error.message || "Error initializing payment." });
     }
 });
 //# sourceMappingURL=index.js.map

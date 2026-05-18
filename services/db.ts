@@ -234,14 +234,25 @@ export const FirebaseService = {
   },
 
   // Unlock Transaction logic
-  async initializeMpesaPayment(listingId: string, phone: string, amount: number): Promise<{ checkoutRequestId: string, customerMessage: string }> {
+  async initializeMpesaPayment(listingId: string, phone: string, amount: number): Promise<string> {
     try {
-      // Use the legacy name (initializePayment) which already has public IAM bindings from before the org policy
-      const initFunc = httpsCallable(functions, 'initializePayment');
-      const result = await initFunc({ listingId, phone, amount });
-      return result.data as { checkoutRequestId: string, customerMessage: string };
+      const user = auth.currentUser;
+      if (!user) throw new Error("User not authenticated");
+
+      // We bypass Cloud Run HTTP entirely to avoid Domain Restricted Sharing Org Policy issues.
+      // Instead, we write the request directly to Firestore, which triggers the backend securely.
+      const docRef = await addDoc(collection(db, "mpesa_requests"), {
+        listingId,
+        phone,
+        amount,
+        userId: user.uid,
+        status: 'pending',
+        createdAt: serverTimestamp()
+      });
+      
+      return docRef.id;
     } catch (e: any) {
-      console.error("Cloud Function initializeMpesaPayment failed:", e);
+      console.error("Firestore initializeMpesaPayment failed:", e);
       throw e;
     }
   },
