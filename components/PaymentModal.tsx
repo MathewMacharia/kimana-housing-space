@@ -217,8 +217,23 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ onClose, onSuccess, title, 
                   <p className="text-sm text-slate-500 mt-2">Please enter your M-PESA PIN on the prompt sent to your phone...</p>
                 </div>
                 
-                <div className="mt-8 pt-6 border-t border-slate-100 w-full max-w-xs">
+                <div className="mt-8 pt-6 border-t border-slate-100 w-full max-w-xs space-y-3">
                   <p className="text-xs text-slate-400 mb-3">Taking too long or entered the wrong PIN?</p>
+                  
+                  <button 
+                    onClick={async () => {
+                      if (!checkoutId) return;
+                      try {
+                        await FirebaseService.queryMpesaPayment(checkoutId);
+                      } catch(e) {
+                        console.error(e);
+                      }
+                    }}
+                    className="w-full py-3 bg-[#48bb78] text-white rounded-md text-sm font-bold shadow-md hover:bg-[#38a169] transition-all"
+                  >
+                    I Have Paid - Verify
+                  </button>
+
                   <button 
                     onClick={() => {
                       setStep('details');

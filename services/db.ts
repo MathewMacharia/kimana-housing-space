@@ -258,6 +258,24 @@ export const FirebaseService = {
     }
   },
 
+  async queryMpesaPayment(checkoutRequestId: string): Promise<void> {
+    try {
+      const user = auth.currentUser;
+      if (!user) throw new Error("User not authenticated");
+
+      await addDoc(collection(db, "mpesa_queries"), {
+        userId: user.uid,
+        checkoutRequestId,
+        createdAt: serverTimestamp(),
+        status: 'pending'
+      });
+      // The backend will process this and update mpesa_transactions
+    } catch (e: any) {
+      console.error("queryMpesaPayment failed:", e);
+      throw e;
+    }
+  },
+
   async unlockListingForUser(identifier: string, listingId: string): Promise<void> {
     try {
       if (!db || !auth.currentUser) return;
