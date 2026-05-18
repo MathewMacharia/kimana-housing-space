@@ -351,7 +351,7 @@ export const processMpesaRequest = functionsV1.region("europe-west1").firestore
         const password = Buffer.from(`${shortcode}${passkey}${timestamp}`).toString('base64');
         
         // Use Vercel Webhook URL
-        const webhookUrl = `https://masqani.com/api/webhook`;
+        const webhookUrl = `https://kimana-housing-space.vercel.app/api/webhook`;
 
         const stkPayload = {
             BusinessShortCode: shortcode,
