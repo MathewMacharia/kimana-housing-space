@@ -17,8 +17,9 @@ interface PaymentModalProps {
 
 const PaymentModal: React.FC<PaymentModalProps> = ({ onClose, onSuccess, title, amount, subtitle, listingId, userEmail }) => {
   const [method, setMethod] = useState<PaymentMethod>('mpesa');
-  const [step, setStep] = useState<'details' | 'processing' | 'success' | 'error'>('details');
+  const [step, setStep] = useState<'details' | 'processing' | 'success' | 'error' | 'manual_code'>('details');
   const [phone, setPhone] = useState('');
+  const [manualCode, setManualCode] = useState('');
   const [requestId, setRequestId] = useState<string | null>(null);
   const [checkoutId, setCheckoutId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState('The transaction could not be completed. Please try again.');
@@ -236,15 +237,86 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ onClose, onSuccess, title, 
 
                   <button 
                     onClick={() => {
+                      setStep('manual_code');
+                    }}
+                    className="w-full py-2 bg-slate-100 text-slate-600 rounded-md text-sm font-semibold hover:bg-slate-200 transition-colors"
+                  >
+                    Enter M-PESA Code Manually
+                  </button>
+
+                  <button 
+                    onClick={() => {
                       setStep('details');
                       setRequestId(null);
                       setCheckoutId(null);
                     }}
-                    className="w-full py-2 bg-slate-100 text-slate-600 rounded-md text-sm font-semibold hover:bg-slate-200 transition-colors"
+                    className="w-full py-2 bg-transparent text-slate-400 rounded-md text-sm font-semibold hover:text-slate-600 transition-colors"
                   >
-                    Cancel & Try Again
+                    Cancel Payment
                   </button>
                 </div>
+              </div>
+            )}
+
+            {step === 'manual_code' && (
+              <div className="flex-1 flex flex-col max-w-md mx-auto w-full justify-center pb-8 animate-in fade-in duration-300">
+                <h3 className="text-center font-semibold text-slate-700 mb-2 text-lg">
+                  Verify M-PESA Payment
+                </h3>
+                <p className="text-center text-sm text-slate-500 mb-8">
+                  Please enter the exact M-PESA transaction code you received via SMS (e.g. SGH1234567).
+                </p>
+
+                <form 
+                  onSubmit={async (e) => {
+                    e.preventDefault();
+                    if (manualCode.trim().length < 8) {
+                      setErrorMessage('Please enter a valid M-PESA code.');
+                      setStep('error');
+                      return;
+                    }
+                    try {
+                      setStep('processing');
+                      await FirebaseService.submitManualMpesaCode(listingId, manualCode.trim().toUpperCase());
+                      setStep('success');
+                      setTimeout(() => onSuccess(), 2000);
+                    } catch (err: any) {
+                      setErrorMessage(err.message || 'Failed to verify code.');
+                      setStep('error');
+                    }
+                  }} 
+                  className="space-y-4"
+                >
+                  <div className="border border-slate-300 rounded-md p-4 bg-white shadow-sm focus-within:border-[#48bb78] focus-within:ring-1 focus-within:ring-[#48bb78]/50 transition-all">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-2">M-PESA TRANSACTION CODE</label>
+                    <input 
+                      type="text" 
+                      placeholder="e.g. SGH1234567" 
+                      className="w-full outline-none text-slate-700 text-lg uppercase"
+                      value={manualCode}
+                      onChange={(e) => setManualCode(e.target.value)}
+                      autoFocus
+                      required
+                    />
+                  </div>
+
+                  <button 
+                    type="submit" 
+                    className="w-full py-4 mt-6 bg-[#48bb78] hover:bg-[#38a169] text-white font-bold rounded-md shadow-md active:scale-[0.98] transition-all text-base"
+                  >
+                    Verify Payment
+                  </button>
+
+                  <div className="text-center mt-6">
+                    <button 
+                      type="button" 
+                      onClick={() => setStep('processing')}
+                      className="text-sm font-medium text-slate-600 hover:text-slate-800 transition-colors"
+                    >
+                      Back
+                    </button>
+                  </div>
+                </form>
               </div>
             )}
 
