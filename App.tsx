@@ -669,13 +669,13 @@ const App: React.FC = () => {
           onClose={() => setIsPaymentModalOpen(false)}
           onSuccess={() => {
             if (currentUser && selectedListing) {
-              FirebaseService.unlockListingForUser(currentUser.email || currentUser.id, selectedListing.id).then(() => {
-                setCurrentUser({
-                  ...currentUser,
-                  unlockedListings: [...(currentUser.unlockedListings || []), selectedListing.id]
-                });
-                setIsPaymentModalOpen(false);
+              // The backend has already unlocked the listing in Firestore via verifyMpesa API
+              // or submitManualMpesaCode. We just need to update the local state and close the UI.
+              setCurrentUser({
+                ...currentUser,
+                unlockedListings: [...(currentUser.unlockedListings || []), selectedListing.id]
               });
+              setIsPaymentModalOpen(false);
             }
           }}
           title="Secure Unlock"
