@@ -64,7 +64,7 @@ service cloud.firestore {
     
     // 3. Landlords: Users can only read/write their own profiles
     match /landlords/{userId} {
-      allow read: if request.auth != null && (request.auth.uid == userId || isAdmin());
+      allow read: if request.auth != null && (request.auth.uid == userId || isAdmin() || isWebhook());
       allow create: if request.auth != null && request.auth.uid == userId
                     && isValidProfileSchema(request.resource.data, 'LANDLORD');
       allow update: if request.auth != null && (request.auth.uid == userId || isAdmin()) && (
@@ -94,6 +94,18 @@ service cloud.firestore {
     match /mpesa_transactions/{transactionId} {
       allow read: if request.auth != null && resource.data.userId == request.auth.uid;
       allow read, write: if isWebhook();
+    }
+
+    // 8. M-PESA Queries: Users can trigger manual status checks
+    match /mpesa_queries/{queryId} {
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      allow read: if request.auth != null && resource.data.userId == request.auth.uid;
+    }
+
+    // 9. M-PESA Manual Codes: Users can submit manual transaction codes
+    match /mpesa_manual_codes/{codeId} {
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      allow read: if isWebhook();
     }
   }
 }

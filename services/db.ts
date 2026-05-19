@@ -400,11 +400,29 @@ export const FirebaseService = {
       }
       lastRevealTime = now;
 
-      const revealFunc = httpsCallable(functions, 'revealContact');
-      const result = await revealFunc({ listingId });
-      return result.data as { name: string, phone: string, email: string };
+      const user = auth.currentUser;
+      if (!user) throw new Error("Authentication required to reveal contact");
+
+      const response = await fetch('/api/revealContact', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          listingId,
+          userId: user.uid
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to fetch contact details");
+      }
+
+      const result = await response.json();
+      return result as { name: string, phone: string, email: string };
     } catch (e: any) {
-      console.error("Cloud Function revealContact failed:", e);
+      console.error("API revealContact failed:", e);
       throw e;
     }
   },
