@@ -225,9 +225,14 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ onClose, onSuccess, title, 
                     onClick={async () => {
                       if (!checkoutId) return;
                       try {
-                        await FirebaseService.queryMpesaPayment(checkoutId);
-                      } catch(e) {
-                        console.error(e);
+                        const verified = await FirebaseService.queryMpesaPayment(checkoutId, listingId);
+                        if (verified) {
+                          setStep('success');
+                          setTimeout(() => onSuccess(), 2000);
+                        }
+                      } catch(e: any) {
+                        setErrorMessage(e.message || 'Payment not completed yet. Please check your phone.');
+                        setStep('error');
                       }
                     }}
                     className="w-full py-3 bg-[#48bb78] text-white rounded-md text-sm font-bold shadow-md hover:bg-[#38a169] transition-all"

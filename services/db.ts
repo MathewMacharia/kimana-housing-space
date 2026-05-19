@@ -258,18 +258,24 @@ export const FirebaseService = {
     }
   },
 
-  async queryMpesaPayment(checkoutRequestId: string): Promise<void> {
+  async queryMpesaPayment(checkoutRequestId: string, listingId: string): Promise<boolean> {
     try {
       const user = auth.currentUser;
       if (!user) throw new Error("User not authenticated");
 
-      await addDoc(collection(db, "mpesa_queries"), {
-        userId: user.uid,
-        checkoutRequestId,
-        createdAt: serverTimestamp(),
-        status: 'pending'
+      const response = await fetch('/api/verifyMpesa', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ checkoutRequestId, listingId, userId: user.uid })
       });
-      // The backend will process this and update mpesa_transactions
+
+      const data = await response.json();
+      
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || "Payment verification failed");
+      }
+
+      return true;
     } catch (e: any) {
       console.error("queryMpesaPayment failed:", e);
       throw e;
