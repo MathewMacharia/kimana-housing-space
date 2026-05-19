@@ -287,18 +287,17 @@ export const FirebaseService = {
       const user = auth.currentUser;
       if (!user) throw new Error("User not authenticated");
 
-      // Record the code for admin verification
-      await addDoc(collection(db, "mpesa_queries"), {
-        userId: user.uid,
-        listingId,
-        mpesaCode,
-        createdAt: serverTimestamp(),
-        type: 'manual_verification',
-        status: 'pending_verification' // Admin can verify later
+      const response = await fetch('/api/submitManualMpesa', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ listingId, userId: user.uid, mpesaCode })
       });
 
-      // Instantly unlock the listing for the user as requested
-      await this.unlockListingForUser(user.uid, listingId);
+      const data = await response.json();
+      
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || "Failed to verify M-PESA code");
+      }
     } catch (e: any) {
       console.error("submitManualMpesaCode failed:", e);
       throw e;
