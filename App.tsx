@@ -382,30 +382,7 @@ const App: React.FC = () => {
       );
     }
 
-    return (
-      <div className="space-y-10 animate-in fade-in duration-700">
-        <div className="mb-2">
-          <h2 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">Karibu Masqani</h2>
-          <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mt-1">Finding Your perfect place wherever you are</p>
-        </div>
-
-        <HomeSection
-          title={t('bizSpace')}
-          icon="fa-shop"
-          subtitle="Premium Business Stalls"
-          onSelectType={() => setFilterType(UnitType.BUSINESS_HOUSE)}
-          listingsGroup={businessListings}
-        />
-
-        <HomeSection
-          title={t('topResidencies')}
-          icon="fa-bed"
-          subtitle="Houses & Airbnb Units"
-          onSelectType={() => setFilterType('all')}
-          listingsGroup={residentialListings}
-        />
-      </div>
-    );
+    return null;
   };
 
   const renderExploreContent = () => {
