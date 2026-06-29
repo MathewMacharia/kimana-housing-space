@@ -22,7 +22,7 @@ import {
   updateProfile,
   verifyBeforeUpdateEmail,
 } from "firebase/auth";
-import { User, Listing, UserRole } from "../types";
+import { User, Listing, UserRole, SellerLead } from "../types";
 import { LoggerService } from "./logger";
 import { RateLimiter } from "./rateLimiter";
 
@@ -455,5 +455,24 @@ export const FirebaseService = {
     } catch (e) {
       console.error("SWR update failed:", e);
     }
+  },
+
+  // Seller Lead Management (for /sell page submissions)
+  async saveSellerLead(lead: SellerLead): Promise<string> {
+    try {
+      if (!db) throw new Error("Firestore database not initialized");
+      const leadsRef = collection(db, "seller_leads");
+      const docRef = await addDoc(leadsRef, {
+        ...lead,
+        createdAt: serverTimestamp()
+      });
+      console.log("✅ Seller lead saved:", docRef.id);
+      return docRef.id;
+    } catch (e: any) {
+      console.error("❌ Firestore saveSellerLead failed:", e);
+      await LoggerService.logApiError("saveSellerLead", e);
+      throw e;
+    }
   }
 };
+

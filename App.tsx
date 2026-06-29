@@ -1,8 +1,14 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
+import { Routes, Route, useNavigate } from 'react-router-dom';
 import { QueryDocumentSnapshot } from 'firebase/firestore';
-import { User, UserRole, Listing, UnitType, Review } from './types';
-import { UNLOCK_FEE_STANDARD, UNLOCK_FEE_AIRBNB, UNLOCK_FEE_BUSINESS, UNLOCK_FEE_SHORT_STAY, MOCK_LISTINGS, LOCATIONS_HIERARCHY } from './constants';
+import { User, UserRole, Listing, UnitType, Review, SHORT_STAY_UNIT_TYPES, BUY_UNIT_TYPES } from './types';
+import {
+  UNLOCK_FEE_STANDARD, UNLOCK_FEE_AIRBNB, UNLOCK_FEE_BNB,
+  UNLOCK_FEE_BUSINESS, UNLOCK_FEE_SHORT_STAY, UNLOCK_FEE_FARMLAND,
+  UNLOCK_FEE_LAND_SALE, UNLOCK_FEE_PROPERTY_SALE,
+  MOCK_LISTINGS, LOCATIONS_HIERARCHY
+} from './constants';
 import ListingCard from './components/ListingCard';
 import ListingDetail from './components/ListingDetail';
 import LandlordDashboard from './components/LandlordDashboard';
@@ -11,6 +17,13 @@ import PaymentModal from './components/PaymentModal';
 import AuthFlow from './components/AuthFlow';
 import Settings from './components/Settings';
 import ContactSupportModal from './components/ContactSupportModal';
+import Navbar from './components/Navbar';
+import Footer from './components/Footer';
+import HeroSection from './components/HeroSection';
+import BrowseCategories from './components/BrowseCategories';
+import RentPage from './components/RentPage';
+import BuyPage from './components/BuyPage';
+import SellPage from './components/SellPage';
 import { FirebaseService } from './services/db';
 import { LoggerService } from './services/logger';
 import { auth } from './firebase';
@@ -37,6 +50,7 @@ const App: React.FC = () => {
   const [vacantOnly, setVacantOnly] = useState(false);
   const [globalLogo, setGlobalLogo] = useState<string | null>(null);
   const [savingFavorites, setSavingFavorites] = useState<Record<string, boolean>>({});
+  const navigate = useNavigate();
 
   // Debounce search query to prevent laggy typing
   useEffect(() => {
@@ -622,55 +636,150 @@ const App: React.FC = () => {
     );
   };
 
-  const unlockFee = (selectedListing?.unitType === UnitType.AIRBNB ||
-    selectedListing?.unitType === UnitType.GUEST_ROOM ||
-    selectedListing?.unitType === UnitType.CAMPSITE) ? UNLOCK_FEE_SHORT_STAY :
-    (selectedListing?.unitType === UnitType.BUSINESS_HOUSE ? UNLOCK_FEE_BUSINESS : UNLOCK_FEE_STANDARD);
+  // Determine unlock fee based on listing type/category
+  const getUnlockFee = (listing: Listing | null): number => {
+    if (!listing) return UNLOCK_FEE_STANDARD;
+    if (listing.unitType === UnitType.PROPERTY_SALE) return UNLOCK_FEE_PROPERTY_SALE;
+    if (listing.unitType === UnitType.LAND_SALE || listing.unitType === UnitType.FARMLAND_SALE) return UNLOCK_FEE_LAND_SALE;
+    if (listing.unitType === UnitType.BNB) return UNLOCK_FEE_BNB;
+    if (listing.unitType === UnitType.FARMLAND_RENT) return UNLOCK_FEE_FARMLAND;
+    if (SHORT_STAY_UNIT_TYPES.includes(listing.unitType)) return UNLOCK_FEE_SHORT_STAY;
+    if (listing.unitType === UnitType.BUSINESS_HOUSE) return UNLOCK_FEE_BUSINESS;
+    return UNLOCK_FEE_STANDARD;
+  };
+  const unlockFee = getUnlockFee(selectedListing);
 
   return (
-    <div className="min-h-screen pb-24 bg-slate-50 dark:bg-slate-950 transition-colors">
-      <header className="sticky top-0 z-30 bg-white/80 dark:bg-slate-950/80 backdrop-blur-md px-4 py-3 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center">
-        <div className="flex items-center gap-3">
-          <div className="w-12 flex items-center justify-center overflow-hidden">
-            <img src={globalLogo || "/logo.png"} alt="Logo" className="w-full h-full object-contain" />
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 transition-colors">
+      <Navbar
+        currentUser={currentUser}
+        globalLogo={globalLogo}
+        onProfileClick={() => { setActiveTab('profile'); setSelectedListing(null); }}
+      />
+
+      <Routes>
+        {/* Rent routes */}
+        <Route path="/rent" element={
+          <RentPage
+            listings={listings}
+            isLoading={isLoading}
+            currentUser={currentUser}
+            onSelectListing={setSelectedListing}
+            onToggleFavorite={handleToggleFavorite}
+            savingFavorites={savingFavorites}
+          />
+        } />
+        <Route path="/rent/:subcategory" element={
+          <RentPage
+            listings={listings}
+            isLoading={isLoading}
+            currentUser={currentUser}
+            onSelectListing={setSelectedListing}
+            onToggleFavorite={handleToggleFavorite}
+            savingFavorites={savingFavorites}
+          />
+        } />
+
+        {/* Buy routes */}
+        <Route path="/buy" element={
+          <BuyPage
+            listings={listings}
+            isLoading={isLoading}
+            currentUser={currentUser}
+            onSelectListing={setSelectedListing}
+            onToggleFavorite={handleToggleFavorite}
+            savingFavorites={savingFavorites}
+          />
+        } />
+        <Route path="/buy/:subcategory" element={
+          <BuyPage
+            listings={listings}
+            isLoading={isLoading}
+            currentUser={currentUser}
+            onSelectListing={setSelectedListing}
+            onToggleFavorite={handleToggleFavorite}
+            savingFavorites={savingFavorites}
+          />
+        } />
+
+        {/* Sell page */}
+        <Route path="/sell" element={<SellPage />} />
+
+        {/* Home / default route — existing mobile app logic */}
+        <Route path="/*" element={
+          <div className="pb-24">
+            {/* Show hero & categories only on home, not when viewing a detail */}
+            {!selectedListing && activeTab === 'home' && currentUser?.role !== UserRole.LANDLORD && (
+              <>
+                <HeroSection onSearch={(q) => { setSearchQuery(q); setActiveTab('home'); }} />
+                <BrowseCategories />
+              </>
+            )}
+            <main className="px-4 py-4 max-w-2xl mx-auto min-h-[calc(100vh-140px)]">
+              {renderMainContent()}
+            </main>
+            <nav className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur px-8 py-3 flex justify-around items-center border-t border-slate-100 dark:border-slate-800 safe-area-inset-bottom">
+              <button onClick={() => { setActiveTab('home'); setSelectedListing(null); }} className={`flex flex-col items-center gap-1 ${activeTab === 'home' ? 'text-blue-600' : 'text-slate-400'}`}>
+                <i className="fas fa-home text-lg" />
+                <span className="text-[9px] font-black uppercase tracking-tighter">{t('market')}</span>
+              </button>
+              <button onClick={() => { setActiveTab('search'); setSelectedListing(null); }} className={`flex flex-col items-center gap-1 ${activeTab === 'search' ? 'text-blue-600' : 'text-slate-400'}`}>
+                <i className="fas fa-map-marked-alt text-lg" />
+                <span className="text-[9px] font-black uppercase tracking-tighter">{t('explore')}</span>
+              </button>
+              <button onClick={() => { setActiveTab('listings'); setSelectedListing(null); }} className={`flex flex-col items-center gap-1 ${activeTab === 'listings' ? 'text-blue-600' : 'text-slate-400'}`}>
+                <i className="fas fa-heart text-lg" />
+                <span className="text-[9px] font-black uppercase tracking-tighter">{t('saved')}</span>
+              </button>
+              <button onClick={() => { setActiveTab('profile'); setSelectedListing(null); }} className={`flex flex-col items-center gap-1 ${activeTab === 'profile' ? 'text-blue-600' : 'text-slate-400'}`}>
+                <i className="fas fa-cog text-lg" />
+                <span className="text-[9px] font-black uppercase tracking-tighter">{t('account')}</span>
+              </button>
+            </nav>
           </div>
-          <h1 className="text-sm font-black text-slate-800 dark:text-slate-100 uppercase tracking-tight">Masqani Poa</h1>
+        } />
+      </Routes>
+
+      {/* Listing detail overlay — appears on top of all pages when a listing is selected from rent/buy pages */}
+      {selectedListing && (
+        <div className="fixed inset-0 z-50 bg-white dark:bg-slate-950 overflow-y-auto">
+          <ListingDetail
+            listing={selectedListing}
+            onBack={() => setSelectedListing(null)}
+            onUnlock={() => {
+              if (!currentUser) {
+                alert("You must be logged in to unlock landlord details.");
+                setActiveTab('profile');
+                return;
+              }
+              setIsPaymentModalOpen(true);
+            }}
+            isUnlocked={currentUser?.unlockedListings.includes(selectedListing.id) || false}
+            currentUser={currentUser}
+            onAddReview={handleAddReview}
+            isFavorite={currentUser?.favorites?.includes(selectedListing.id) || false}
+            onToggleFavorite={() => handleToggleFavorite(selectedListing.id)}
+            isSavingFavorite={savingFavorites[selectedListing.id]}
+            onRequireAuth={() => {
+              alert("You must be logged in to perform this action.");
+              setActiveTab('profile');
+            }}
+          />
         </div>
-        <button onClick={() => { setActiveTab('profile'); setSelectedListing(null); }} className="w-9 h-9 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 dark:text-slate-400 active:scale-90 overflow-hidden">
-          {currentUser?.name ? <span className="text-[10px] font-black">{currentUser.name.substring(0, 1)}</span> : <i className="fas fa-user-circle"></i>}
-        </button>
-      </header>
+      )}
 
-      <main className="px-4 py-4 max-w-2xl mx-auto min-h-[calc(100vh-140px)]">
-        {renderMainContent()}
-      </main>
-
-      <nav className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur px-8 py-3 flex justify-around items-center border-t border-slate-100 dark:border-slate-800 safe-area-inset-bottom">
-        <button onClick={() => { setActiveTab('home'); setSelectedListing(null); }} className={`flex flex-col items-center gap-1 ${activeTab === 'home' ? 'text-blue-600' : 'text-slate-400'}`}>
-          <i className="fas fa-home text-lg"></i>
-          <span className="text-[9px] font-black uppercase tracking-tighter">{t('market')}</span>
-        </button>
-        <button onClick={() => { setActiveTab('search'); setSelectedListing(null); }} className={`flex flex-col items-center gap-1 ${activeTab === 'search' ? 'text-blue-600' : 'text-slate-400'}`}>
-          <i className="fas fa-map-marked-alt text-lg"></i>
-          <span className="text-[9px] font-black uppercase tracking-tighter">{t('explore')}</span>
-        </button>
-        <button onClick={() => { setActiveTab('listings'); setSelectedListing(null); }} className={`flex flex-col items-center gap-1 ${activeTab === 'listings' ? 'text-blue-600' : 'text-slate-400'}`}>
-          <i className="fas fa-heart text-lg"></i>
-          <span className="text-[9px] font-black uppercase tracking-tighter">{t('saved')}</span>
-        </button>
-        <button onClick={() => { setActiveTab('profile'); setSelectedListing(null); }} className={`flex flex-col items-center gap-1 ${activeTab === 'profile' ? 'text-blue-600' : 'text-slate-400'}`}>
-          <i className="fas fa-cog text-lg"></i>
-          <span className="text-[9px] font-black uppercase tracking-tighter">{t('account')}</span>
-        </button>
-      </nav>
+      {/* Footer on all routes except home (has bottom nav) */}
+      <Routes>
+        <Route path="/rent/*" element={<Footer />} />
+        <Route path="/buy/*" element={<Footer />} />
+        <Route path="/sell" element={<Footer />} />
+      </Routes>
 
       {isPaymentModalOpen && (
         <PaymentModal
           onClose={() => setIsPaymentModalOpen(false)}
           onSuccess={() => {
             if (currentUser && selectedListing) {
-              // The backend has already unlocked the listing in Firestore via verifyMpesa API
-              // or submitManualMpesaCode. We just need to update the local state and close the UI.
               setCurrentUser({
                 ...currentUser,
                 unlockedListings: [...(currentUser.unlockedListings || []), selectedListing.id]
