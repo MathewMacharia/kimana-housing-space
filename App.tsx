@@ -21,6 +21,7 @@ import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import HeroSection from './components/HeroSection';
 import BrowseCategories from './components/BrowseCategories';
+import FeaturedListings from './components/FeaturedListings';
 import RentPage from './components/RentPage';
 import BuyPage from './components/BuyPage';
 import SellPage from './components/SellPage';
@@ -713,6 +714,13 @@ const App: React.FC = () => {
               <>
                 <HeroSection onSearch={(q) => { setSearchQuery(q); setActiveTab('home'); }} />
                 <BrowseCategories />
+                <FeaturedListings
+                  listings={listings}
+                  onSelectListing={setSelectedListing}
+                  currentUser={currentUser}
+                  onToggleFavorite={handleToggleFavorite}
+                  savingFavorites={savingFavorites}
+                />
               </>
             )}
             <main className="px-4 py-4 max-w-2xl mx-auto min-h-[calc(100vh-140px)]">
