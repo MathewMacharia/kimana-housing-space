@@ -290,49 +290,52 @@ const ListingDetail: React.FC<ListingDetailProps> = ({
               <p className="text-xs text-slate-650 dark:text-slate-350 leading-relaxed whitespace-pre-line">{listing.description}</p>
             </div>
 
-            {/* Amenities Grid */}
-            <div className="bg-slate-50 dark:bg-slate-900/50 rounded-3xl p-6 border border-slate-100 dark:border-slate-800 space-y-4 shadow-sm">
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Amenities & Features</p>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                {/* Standard parking feature */}
-                <div className={`flex items-center gap-3 p-3.5 rounded-2xl border transition-colors ${listing.hasParking ? 'bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-800 text-slate-800 dark:text-slate-200' : 'bg-slate-100/50 dark:bg-slate-950/20 border-slate-100 dark:border-slate-900 text-slate-350 dark:text-slate-600 line-through'}`}>
-                  <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-sm ${listing.hasParking ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600' : 'bg-slate-100 dark:bg-slate-900 text-slate-400'}`}>
-                    <i className="fas fa-car"></i>
-                  </div>
-                  <span className="text-xs font-bold">Secure Parking</span>
-                </div>
+            {/* Amenities Section */}
+            <div className="bg-white dark:bg-slate-900/50 rounded-3xl p-6 border border-slate-100 dark:border-slate-800 space-y-4 shadow-sm text-left">
+              <h2 className="text-lg font-black text-slate-800 dark:text-slate-100 tracking-tight">Amenities</h2>
+              <div className="flex flex-wrap gap-2.5">
+                {(() => {
+                  const presentAmenities: { label: string }[] = [];
 
-                {/* Standard pet friendly feature */}
-                <div className={`flex items-center gap-3 p-3.5 rounded-2xl border transition-colors ${listing.isPetsFriendly ? 'bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-800 text-slate-800 dark:text-slate-200' : 'bg-slate-100/50 dark:bg-slate-950/20 border-slate-100 dark:border-slate-900 text-slate-350 dark:text-slate-600 line-through'}`}>
-                  <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-sm ${listing.isPetsFriendly ? 'bg-orange-50 dark:bg-orange-900/20 text-orange-600' : 'bg-slate-100 dark:bg-slate-900 text-slate-400'}`}>
-                    <i className="fas fa-dog"></i>
-                  </div>
-                  <span className="text-xs font-bold">Pets Allowed</span>
-                </div>
+                  if (listing.hasParking) {
+                    presentAmenities.push({ label: 'Allocated Parking' });
+                  }
+                  if (listing.isPetsFriendly) {
+                    presentAmenities.push({ label: 'Pets Allowed' });
+                  }
 
-                {/* ListingAmenities checklist */}
-                {Object.entries({
-                  wifi: { label: 'Free WiFi', icon: 'fa-wifi', color: 'text-indigo-500 bg-indigo-50 dark:bg-indigo-900/20' },
-                  water: { label: 'Constant Water', icon: 'fa-droplet', color: 'text-sky-500 bg-sky-50 dark:bg-sky-900/20' },
-                  electricity: { label: 'Power Grid', icon: 'fa-bolt', color: 'text-amber-500 bg-amber-50 dark:bg-amber-900/20' },
-                  security: { label: '24/7 Guard', icon: 'fa-user-shield', color: 'text-emerald-500 bg-emerald-50 dark:bg-emerald-900/20' },
-                  cctv: { label: 'CCTV Cameras', icon: 'fa-video', color: 'text-rose-500 bg-rose-50 dark:bg-rose-900/20' },
-                  solarPower: { label: 'Solar Backup', icon: 'fa-solar-panel', color: 'text-yellow-500 bg-yellow-50 dark:bg-yellow-900/20' },
-                  borehole: { label: 'Borehole Water', icon: 'fa-faucet-drip', color: 'text-cyan-500 bg-cyan-50 dark:bg-cyan-900/20' },
-                  generator: { label: 'Backup Gen', icon: 'fa-server', color: 'text-violet-500 bg-violet-50 dark:bg-violet-900/20' },
-                  swimmingPool: { label: 'Swimming Pool', icon: 'fa-water-ladder', color: 'text-blue-500 bg-blue-50 dark:bg-blue-900/20' },
-                  gym: { label: 'Fitness Gym', icon: 'fa-dumbbell', color: 'text-pink-500 bg-pink-50 dark:bg-pink-900/20' }
-                }).map(([key, config]) => {
-                  const hasAmenity = !!listing.amenities?.[key as keyof typeof listing.amenities];
-                  return (
-                    <div key={key} className={`flex items-center gap-3 p-3.5 rounded-2xl border transition-colors ${hasAmenity ? 'bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-800 text-slate-800 dark:text-slate-200' : 'bg-slate-100/50 dark:bg-slate-950/20 border-slate-100 dark:border-slate-900 text-slate-350 dark:text-slate-600 line-through'}`}>
-                      <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-sm ${hasAmenity ? config.color : 'bg-slate-100 dark:bg-slate-900 text-slate-400'}`}>
-                        <i className={`fas ${config.icon}`}></i>
-                      </div>
-                      <span className="text-xs font-bold">{config.label}</span>
+                  const amenityMap = {
+                    wifi: 'Free WiFi',
+                    water: 'Constant Water',
+                    electricity: 'Power Grid',
+                    security: '24/7 Security',
+                    cctv: 'CCTV',
+                    solarPower: 'Solar Backup',
+                    borehole: 'Borehole Water',
+                    generator: 'Back up generator',
+                    swimmingPool: 'Swimming Pool',
+                    gym: 'Fitness Gym'
+                  };
+
+                  Object.entries(amenityMap).forEach(([key, label]) => {
+                    if (listing.amenities?.[key as keyof typeof listing.amenities]) {
+                      presentAmenities.push({ label });
+                    }
+                  });
+
+                  return presentAmenities.map((amenity, idx) => (
+                    <div
+                      key={idx}
+                      className="flex items-center bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-2 text-xs font-semibold text-slate-700 dark:text-slate-350 shadow-sm"
+                    >
+                      <i className="fas fa-circle-check text-emerald-500 mr-2 text-[13px]"></i>
+                      {amenity.label}
                     </div>
-                  );
-                })}
+                  ));
+                })()}
+                {(!listing.hasParking && !listing.isPetsFriendly && (!listing.amenities || Object.values(listing.amenities).every(v => !v))) && (
+                  <p className="text-xs text-slate-400 font-medium italic">No amenities specified for this listing.</p>
+                )}
               </div>
             </div>
 
