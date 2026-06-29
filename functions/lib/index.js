@@ -1,0 +1,357 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.processMpesaRequest = exports.verifyRecaptcha = exports.refineDescription = exports.enhancedSearch = exports.revealContact = void 0;
+const https_1 = require("firebase-functions/v2/https");
+const functionsV1 = require("firebase-functions/v1");
+const admin = require("firebase-admin");
+const genai_1 = require("@google/genai");
+admin.initializeApp();
+exports.revealContact = (0, https_1.onCall)({
+    concurrency: 80, // Allow 1 instance to handle up to 80 concurrent requests
+    memory: "512MiB", // Valid v2 memory format
+    timeoutSeconds: 30,
+    region: "europe-west1" // Primary region (multi-region handled in firebase.json for deployment)
+}, async (request) => {
+    // 1. Authentication Check
+    if (!request.auth) {
+        throw new https_1.HttpsError("unauthenticated", "User must be logged in to reveal contact.");
+    }
+    const listingId = request.data.listingId;
+    const userId = request.auth.uid;
+    if (!listingId || typeof listingId !== 'string' || listingId.length > 50 || !/^[a-zA-Z0-9_-]+$/.test(listingId)) {
+        throw new https_1.HttpsError("invalid-argument", "Valid Listing ID is required.");
+    }
+    try {
+        // 2. Daily Quota Check (Max 20 reveals per day)
+        const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+        const usageRef = admin.firestore().collection("usage").doc(`${userId}_${today}`);
+        const usageDoc = await usageRef.get();
+        const revealCount = usageDoc.data()?.revealCount || 0;
+        if (revealCount >= 20) {
+            // Log Abuse Attempt
+            await admin.firestore().collection("abuse_events").add({
+                userId,
+                type: "DAILY_LIMIT_EXCEEDED",
+                timestamp: admin.firestore.FieldValue.serverTimestamp(),
+                listingId
+            });
+            throw new https_1.HttpsError("resource-exhausted", "Daily reveal limit reached (20). Please try again tomorrow.");
+        }
+        // 3. Authorization Check (Has the user paid/unlocked this listing?)
+        // We check the tenant's profile for the unlockedListing ID
+        const userDoc = await admin.firestore().collection("tenants").doc(userId).get();
+        const userData = userDoc.data();
+        const isUnlocked = userData?.unlockedListings?.includes(listingId);
+        // Also allow if the user is the landlord of this listing
+        const listingDoc = await admin.firestore().collection("listings").doc(listingId).get();
+        const listingData = listingDoc.data();
+        if (!isUnlocked && listingData?.landlordId !== userId) {
+            throw new https_1.HttpsError("permission-denied", "You have not unlocked this listing. Please pay the unlock fee first.");
+        }
+        // 4. Fetch Landlord details from the normalized collection
+        const landlordId = listingData?.landlordId;
+        if (!landlordId) {
+            throw new https_1.HttpsError("not-found", "Landlord information not found.");
+        }
+        const landlordDoc = await admin.firestore().collection("landlords").doc(landlordId).get();
+        const landlordData = landlordDoc.data();
+        if (!landlordDoc.exists) {
+            throw new https_1.HttpsError("not-found", "Landlord profile not found.");
+        }
+        // 5. Increment Usage Counter
+        await usageRef.set({
+            revealCount: revealCount + 1,
+            lastUpdated: admin.firestore.FieldValue.serverTimestamp()
+        }, { merge: true });
+        return {
+            name: landlordData?.name,
+            phone: landlordData?.phone,
+            email: landlordData?.email
+        };
+    }
+    catch (error) {
+        console.error("revealContact error:", error);
+        if (error instanceof https_1.HttpsError)
+            throw error;
+        throw new https_1.HttpsError("internal", "An error occurred while revealing contact.");
+    }
+});
+/**
+ * Enhanced Search Helper Cloud Function
+ * Takes a messy user query and returns structured search terms.
+ */
+exports.enhancedSearch = (0, https_1.onCall)({
+    concurrency: 80,
+    memory: "512MiB",
+    timeoutSeconds: 30,
+    region: "europe-west1"
+}, async (request) => {
+    // Basic rate limit check could be added here similar to revealContact if needed
+    let query = request.data.query;
+    if (!query || typeof query !== 'string') {
+        throw new https_1.HttpsError("invalid-argument", "Query string is required.");
+    }
+    // Sanitize and limit query length to prevent injection or abuse
+    query = query.trim().substring(0, 200).replace(/[<>{}[\];]/g, '');
+    if (!query) {
+        throw new https_1.HttpsError("invalid-argument", "Valid query string is required.");
+    }
+    try {
+        const apiKey = process.env.GEMINI_API_KEY;
+        if (!apiKey) {
+            console.error("GEMINI_API_KEY environment variable is not set.");
+            throw new https_1.HttpsError("internal", "Server configuration error.");
+        }
+        const ai = new genai_1.GoogleGenAI({ apiKey });
+        const response = await ai.models.generateContent({
+            model: 'gemini-flash-latest',
+            contents: `Translate this housing search query into search keywords: "${query}"`,
+            config: {
+                responseMimeType: "application/json",
+                responseSchema: {
+                    type: genai_1.Type.OBJECT,
+                    properties: {
+                        keywords: { type: genai_1.Type.ARRAY, items: { type: genai_1.Type.STRING } },
+                        unitTypeGuess: { type: genai_1.Type.STRING, description: "Bedsitter, 1 Bedroom, 2 Bedroom, 3 Bedroom, 4 Bedroom, Own Compound, or Airbnb" },
+                        maxPrice: { type: genai_1.Type.NUMBER }
+                    },
+                    required: ["keywords"]
+                }
+            }
+        });
+        try {
+            return JSON.parse(response.text || "{}");
+        }
+        catch (e) {
+            console.error("Failed to parse Gemini JSON response", e);
+            return { keywords: [query] };
+        }
+    }
+    catch (error) {
+        console.error("enhancedSearch error:", error);
+        return { keywords: [query] };
+    }
+});
+/**
+ * Description Refiner Cloud Function
+ * Polishes a raw property description into a professional and appealing marketing text.
+ */
+exports.refineDescription = (0, https_1.onCall)({
+    concurrency: 80,
+    memory: "512MiB",
+    timeoutSeconds: 30,
+    region: "europe-west1"
+}, async (request) => {
+    if (!request.auth) {
+        throw new https_1.HttpsError("unauthenticated", "User must be logged in to use this feature.");
+    }
+    let description = request.data.description;
+    if (!description || typeof description !== 'string' || description.length < 10) {
+        return { refined: description };
+    }
+    // Strict length limit and HTML tag stripping
+    description = description.trim().substring(0, 5000).replace(/[<>{}]/g, '');
+    try {
+        const apiKey = process.env.GEMINI_API_KEY;
+        if (!apiKey) {
+            console.error("GEMINI_API_KEY environment variable is not set.");
+            throw new https_1.HttpsError("internal", "Server configuration error.");
+        }
+        const ai = new genai_1.GoogleGenAI({ apiKey });
+        const response = await ai.models.generateContent({
+            model: 'gemini-flash-latest',
+            contents: `You are a world-class real estate copywriter in Kenya. Refine the following property description for a listing in Kimana/Loitokitok/Illasit area. Make it professional, persuasive, and appealing to potential tenants while keeping it honest. 
+            
+            Original draft: "${description}"
+            
+            Provide ONLY the refined text without any introduction or pleasantries.`
+        });
+        return { refined: response.text?.trim() || description };
+    }
+    catch (error) {
+        console.error("refineDescription error:", error);
+        throw new https_1.HttpsError("internal", "An error occurred while refining the description.");
+    }
+});
+/**
+ * reCAPTCHA Verification Cloud Function
+ * Submits the frontend token to Google reCAPTCHA Enterprise API for a risk assessment.
+ */
+exports.verifyRecaptcha = (0, https_1.onCall)({
+    minInstances: 0,
+    concurrency: 80,
+    memory: "256MiB",
+    timeoutSeconds: 30,
+    region: "europe-west1"
+}, async (request) => {
+    const { token, action } = request.data;
+    if (!token) {
+        throw new https_1.HttpsError("invalid-argument", "reCAPTCHA token is required.");
+    }
+    const apiKey = process.env.RECAPTCHA_API_KEY;
+    const siteKey = "6Lfm_nosAAAAADoemKEado5UgzoZdA5P_E9EmA0h";
+    // Fallback if not set
+    if (!apiKey) {
+        console.error("RECAPTCHA_API_KEY environment variable is not set.");
+        throw new https_1.HttpsError("internal", "Server configuration error.");
+    }
+    // Since the project might be inferred from the key or we can parse the site key's project, 
+    // the user provided the REST API url as: 
+    // `https://recaptchaenterprise.googleapis.com/v1/projects/my-portfolio-48f2c/assessments?key=API_KEY`
+    const projectId = "my-portfolio-48f2c";
+    const url = `https://recaptchaenterprise.googleapis.com/v1/projects/${projectId}/assessments?key=${apiKey}`;
+    try {
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                event: {
+                    token: token,
+                    expectedAction: action || "USER_ACTION",
+                    siteKey: siteKey
+                }
+            })
+        });
+        if (!response.ok) {
+            console.error("reCAPTCHA API error:", response.status, await response.text());
+            throw new https_1.HttpsError("internal", "Error communicating with reCAPTCHA service.");
+        }
+        const data = (await response.json());
+        // Assert token is valid and score is acceptable
+        if (data.tokenProperties?.valid) {
+            const score = data.riskAnalysis?.score || 0;
+            return { success: true, valid: true, score: score };
+        }
+        else {
+            console.warn("reCAPTCHA invalid token:", data.tokenProperties?.invalidReason);
+            return { success: false, valid: false, reason: data.tokenProperties?.invalidReason, score: 0 };
+        }
+    }
+    catch (error) {
+        console.error("reCAPTCHA verification exception:", error);
+        throw new https_1.HttpsError("internal", "Error verifying reCAPTCHA.");
+    }
+});
+/**
+ * Utility to generate Daraja OAuth token
+ */
+async function getDarajaToken() {
+    const consumerKey = process.env.DARAJA_CONSUMER_KEY;
+    const consumerSecret = process.env.DARAJA_CONSUMER_SECRET;
+    const env = process.env.DARAJA_ENVIRONMENT || "sandbox";
+    if (!consumerKey || !consumerSecret) {
+        throw new Error("Daraja credentials not configured.");
+    }
+    const baseUrl = env === "production" ? "https://api.safaricom.co.ke" : "https://sandbox.safaricom.co.ke";
+    const auth = Buffer.from(`${consumerKey}:${consumerSecret}`).toString('base64');
+    const response = await fetch(`${baseUrl}/oauth/v1/generate?grant_type=client_credentials`, {
+        headers: {
+            "Authorization": `Basic ${auth}`
+        }
+    });
+    if (!response.ok) {
+        throw new Error("Failed to generate Daraja token.");
+    }
+    const data = (await response.json());
+    return data.access_token;
+}
+/**
+ * Initialize a Daraja STK Push session via a Gen 1 Firestore trigger.
+ * This bypasses both Cloud Run HTTP constraints AND Eventarc IAM constraints.
+ */
+exports.processMpesaRequest = functionsV1.region("europe-west1").firestore
+    .document("mpesa_requests/{requestId}")
+    .onCreate(async (snapshot, context) => {
+    const data = snapshot.data();
+    const { listingId, phone, amount, userId, status } = data;
+    // Only process if status is pending
+    if (status !== 'pending')
+        return;
+    if (!listingId || !phone || !amount || !userId) {
+        await snapshot.ref.update({
+            status: 'failed',
+            error: "Missing required fields: Listing ID, Phone, Amount, or User ID."
+        });
+        return;
+    }
+    // Format phone number to 254...
+    let formattedPhone = phone.replace(/\D/g, '');
+    if (formattedPhone.startsWith('0')) {
+        formattedPhone = `254${formattedPhone.substring(1)}`;
+    }
+    else if (formattedPhone.startsWith('7') || formattedPhone.startsWith('1')) {
+        formattedPhone = `254${formattedPhone}`;
+    }
+    if (!formattedPhone.startsWith('254') || formattedPhone.length !== 12) {
+        await snapshot.ref.update({ status: 'failed', error: "Invalid phone number format." });
+        return;
+    }
+    const passkey = process.env.DARAJA_PASSKEY;
+    const shortcode = process.env.DARAJA_SHORTCODE;
+    const env = process.env.DARAJA_ENVIRONMENT || "sandbox";
+    if (!passkey || !shortcode) {
+        await snapshot.ref.update({ status: 'failed', error: "Payment gateway is not configured." });
+        return;
+    }
+    try {
+        const token = await getDarajaToken();
+        const baseUrl = env === "production" ? "https://api.safaricom.co.ke" : "https://sandbox.safaricom.co.ke";
+        // Generate Password
+        const timestamp = new Date().toISOString().replace(/[^0-9]/g, '').slice(0, 14); // YYYYMMDDHHmmss
+        const password = Buffer.from(`${shortcode}${passkey}${timestamp}`).toString('base64');
+        // Use Vercel Webhook URL
+        const webhookUrl = `https://masqani.com/api/webhook`;
+        const stkPayload = {
+            BusinessShortCode: shortcode,
+            Password: password,
+            Timestamp: timestamp,
+            TransactionType: "CustomerPayBillOnline", // or CustomerBuyGoodsOnline for Till
+            Amount: amount, // KES amount is literal (e.g. 50)
+            PartyA: formattedPhone,
+            PartyB: shortcode,
+            PhoneNumber: formattedPhone,
+            CallBackURL: webhookUrl,
+            AccountReference: "Masqani Unlock",
+            TransactionDesc: `Unlock Listing ${listingId}`
+        };
+        const response = await fetch(`${baseUrl}/mpesa/stkpush/v1/processrequest`, {
+            method: "POST",
+            headers: {
+                "Authorization": `Bearer ${token}`,
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(stkPayload)
+        });
+        if (!response.ok) {
+            console.error("Daraja API error:", response.status, await response.text());
+            await snapshot.ref.update({ status: 'failed', error: "Failed to initialize M-PESA STK Push." });
+            return;
+        }
+        const responseData = (await response.json());
+        if (responseData.ResponseCode !== "0") {
+            await snapshot.ref.update({ status: 'failed', error: "Safaricom rejected: " + responseData.ResponseDescription });
+            return;
+        }
+        // Save transaction to DB to link the CheckoutRequestID with userId and listingId
+        await admin.firestore().collection("mpesa_transactions").doc(responseData.CheckoutRequestID).set({
+            userId,
+            listingId,
+            amount,
+            phone: formattedPhone,
+            status: "pending",
+            requestId: context.params.requestId,
+            createdAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+        // Update the original request document to signal the frontend
+        await snapshot.ref.update({
+            status: 'sent',
+            checkoutRequestId: responseData.CheckoutRequestID,
+            customerMessage: responseData.CustomerMessage
+        });
+    }
+    catch (error) {
+        console.error("processMpesaRequest exception:", error);
+        await snapshot.ref.update({ status: 'failed', error: error.message || "Error initializing payment." });
+    }
+});
+//# sourceMappingURL=index.js.map

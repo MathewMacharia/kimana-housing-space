@@ -1,0 +1,111 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper to prevent rapid writes (Throttling)
+    function isNotSpamming() {
+      let lastUpdate = resource.data.get('updatedAt', null);
+      return lastUpdate == null || request.time > lastUpdate + duration.value(1, 's');
+    }
+
+    // Helper to check if the user is a designated administrator
+    function isAdmin() {
+      return request.auth != null && (
+        request.auth.uid == "YvnDqe9fu1aTbtGIphpD3o6wrDm2" ||
+        request.auth.uid == "VLgz2b4BMGXO3YKQpcYVSMmnEhp1" ||
+        request.auth.uid == "J8IvG9FDWvRFCFGyjUqMIrELIWk2"
+      );
+    }
+
+    // Helper to check if the user is the backend webhook service account
+    function isWebhook() {
+      return request.auth != null && request.auth.uid == "M9iHpTGXgZZY4vtEw1TC4dwmFBD3";
+    }
+
+    // SCHEMA VALIDATORS
+    function isValidListingSchema(docData) {
+      return docData.keys().hasAll(['title', 'description', 'price', 'type', 'location', 'landlordId'])
+        && docData.title is string && docData.title.size() > 0 && docData.title.size() <= 100
+        && docData.description is string && docData.description.size() <= 5000
+        && docData.price is number && docData.price >= 0
+        && docData.type is string
+        && docData.location is string
+        && docData.landlordId == request.auth.uid;
+    }
+
+    function isValidProfileSchema(docData, expectedRole) {
+      return docData.keys().hasAll(['name', 'role'])
+        && docData.name is string && docData.name.size() <= 100
+        && docData.role == expectedRole
+        && (docData.get('phone', '') is string)
+        && (docData.get('email', '') is string);
+    }
+
+    // 1. Listings: Anyone can read, only authenticated landlords can create/update their own
+    match /listings/{listingId} {
+      allow read: if true;
+      allow create: if request.auth != null 
+                    && isValidListingSchema(request.resource.data);
+      allow update: if request.auth != null && (
+        isAdmin() || 
+        (resource.data.landlordId == request.auth.uid && isValidListingSchema(request.resource.data))
+      ) && isNotSpamming();
+      allow delete: if isAdmin() || (request.auth != null && resource.data.landlordId == request.auth.uid);
+    }
+    
+    // 2. Tenants: Users can only read/write their own profiles
+    match /tenants/{userId} {
+      allow read: if request.auth != null && (request.auth.uid == userId || isAdmin() || isWebhook());
+      allow create: if request.auth != null && request.auth.uid == userId
+                    && isValidProfileSchema(request.resource.data, 'TENANT');
+      allow update: if request.auth != null && (request.auth.uid == userId || isAdmin() || isWebhook()) && (
+        isAdmin() || isWebhook() || (request.resource.data.role == resource.data.role && isValidProfileSchema(request.resource.data, 'TENANT'))
+      ) && (isWebhook() || isNotSpamming());
+    }
+    
+    // 3. Landlords: Users can only read/write their own profiles
+    match /landlords/{userId} {
+      allow read: if request.auth != null && (request.auth.uid == userId || isAdmin() || isWebhook());
+      allow create: if request.auth != null && request.auth.uid == userId
+                    && isValidProfileSchema(request.resource.data, 'LANDLORD');
+      allow update: if request.auth != null && (request.auth.uid == userId || isAdmin()) && (
+        isAdmin() || (request.resource.data.role == resource.data.role && isValidProfileSchema(request.resource.data, 'LANDLORD'))
+      ) && isNotSpamming();
+    }
+    
+    // 4. Global Settings: Anyone can read, only authorized admins can write
+    match /settings/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    
+    // 5. System Logs: Clients can create, but never read/update/delete
+    match /logs/{logId} {
+      allow create: if true;
+      allow read, update, delete: if false;
+    }
+
+    // 6. M-PESA Requests: Users can create and read their own
+    match /mpesa_requests/{requestId} {
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      allow read: if request.auth != null && resource.data.userId == request.auth.uid;
+    }
+
+    // 7. M-PESA Transactions: Users can read their own, Webhook can read/write all
+    match /mpesa_transactions/{transactionId} {
+      allow read: if request.auth != null && resource.data.userId == request.auth.uid;
+      allow read, write: if isWebhook();
+    }
+
+    // 8. M-PESA Queries: Users can trigger manual status checks
+    match /mpesa_queries/{queryId} {
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      allow read: if request.auth != null && resource.data.userId == request.auth.uid;
+    }
+
+    // 9. M-PESA Manual Codes: Users can submit manual transaction codes
+    match /mpesa_manual_codes/{codeId} {
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      allow read: if isWebhook();
+    }
+  }
+}

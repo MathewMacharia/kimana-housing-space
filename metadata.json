@@ -1,0 +1,8 @@
+{
+  "name": "Masqani Poa",
+  "description": "A premium housing marketplace connecting tenants and landlords in Kimana. Features M-Pesa integration, AI-powered property matching, and location-based searching.",
+  "requestFramePermissions": [
+    "geolocation",
+    "camera"
+  ]
+}
