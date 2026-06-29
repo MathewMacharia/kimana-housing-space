@@ -28,7 +28,7 @@ const HeroSection: React.FC<HeroSectionProps> = ({ onSearch }) => {
       <div
         className="absolute inset-0 bg-cover bg-center scale-105"
         style={{
-          backgroundImage: `url('https://images.unsplash.com/photo-1626178793926-22b28830aa30?q=80&w=2070&auto=format&fit=crop')`,
+          backgroundImage: `url('/kilimanjaro.jpg')`,
         }}
       />
       {/* Gradient overlays */}
