@@ -600,18 +600,7 @@ const App: React.FC = () => {
       );
     }
 
-    return (
-      <div className="space-y-6">
-        <div className="space-y-3">
-          <div className="relative">
-            <i className="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
-            <input type="text" placeholder={t('searchPlaceholder')} className="w-full pl-11 pr-4 py-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl outline-none shadow-sm dark:text-white font-medium text-black" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
-          </div>
-          <Filters activeType={filterType} onSelect={setFilterType} vacantOnly={vacantOnly} onToggleVacant={() => setVacantOnly(!vacantOnly)} />
-        </div>
-        {renderHomeContent()}
-      </div>
-    );
+    return renderHomeContent();
   };
 
   // Determine unlock fee based on listing type/category
