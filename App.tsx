@@ -501,7 +501,7 @@ const App: React.FC = () => {
   const renderMainContent = () => {
     if (activeTab === 'profile') {
       if (!currentUser) {
-        return <AuthFlow onAuthenticated={handleAuthenticated} logoUrl={globalLogo} />;
+        return <AuthFlow onAuthenticated={handleAuthenticated} logoUrl={globalLogo} onClose={() => { setActiveTab('home'); setSelectedListing(null); }} />;
       }
       return <Settings currentUser={currentUser} onLogout={handleLogout} onUpdateUser={setCurrentUser} isDarkMode={isDarkMode} setIsDarkMode={setIsDarkMode} language={language} setLanguage={setLanguage} t={t} />;
     }

@@ -1,7 +1,11 @@
-
 import React, { useState, useRef } from 'react';
 import { Listing, UnitType } from '../types';
-import { LISTING_FEE_STANDARD, LISTING_FEE_AIRBNB_MONTHLY, LISTING_FEE_BUSINESS, LISTING_FEE_SHORT_STAY_PREMIUM, LOCATIONS_HIERARCHY } from '../constants';
+import {
+  LISTING_FEE_STANDARD, LISTING_FEE_AIRBNB_MONTHLY, LISTING_FEE_BUSINESS,
+  LISTING_FEE_SHORT_STAY_PREMIUM, LOCATIONS_HIERARCHY,
+  LISTING_FEE_BNB_MONTHLY, LISTING_FEE_FARMLAND, LISTING_FEE_LAND_SALE,
+  LISTING_FEE_PROPERTY_SALE
+} from '../constants';
 import PaymentModal from './PaymentModal';
 import { FirebaseService } from '../services/db';
 import { refineDescription } from '../services/geminiService';
@@ -45,7 +49,8 @@ const LandlordDashboard: React.FC<LandlordDashboardProps> = ({
     hasParking: false,
     isPetsFriendly: false,
     locationName: '',
-    buildingName: ''
+    buildingName: '',
+    amenities: {}
   });
 
   const landlordListings = listings.filter(l => {
@@ -58,7 +63,6 @@ const LandlordDashboard: React.FC<LandlordDashboardProps> = ({
     return true;
   });
 
-  // Grouping logic for buildings
   const buildingsMap = landlordListings.reduce((acc, l) => {
     const bName = l.buildingName || 'Other Assets';
     if (!acc[bName]) acc[bName] = [];
@@ -88,14 +92,18 @@ const LandlordDashboard: React.FC<LandlordDashboardProps> = ({
       locationName: '',
       title: '',
       description: '',
-      buildingName: activeBuildingFolder || '' // Pre-fill if inside a folder
+      buildingName: activeBuildingFolder || '',
+      amenities: {}
     });
     setShowForm(true);
   };
 
   const handleOpenEditForm = (listing: Listing) => {
     setIsEditing(true);
-    setCurrentFormListing({ ...listing });
+    setCurrentFormListing({
+      ...listing,
+      amenities: listing.amenities || {}
+    });
     setShowForm(true);
   };
 
@@ -122,7 +130,6 @@ const LandlordDashboard: React.FC<LandlordDashboardProps> = ({
           console.log(`[Upload] Processing ${file.name}...`);
           const compressedFile = await ImageUtils.compressImage(file);
           
-          // Fallback Strategy: If 'listings/' fails, we try 'properties/' which is more likely to have existing rules
           try {
             const primaryPath = `listings/${landlordId}/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.]/g, '_')}.webp`;
             return await FirebaseService.uploadPropertyImage(primaryPath, compressedFile);
@@ -187,10 +194,17 @@ const LandlordDashboard: React.FC<LandlordDashboardProps> = ({
       return;
     }
 
-    // Sanitize user inputs rigorously to prevent XSS / NoSQL Injection attempts
     const sanitizedTitle = SanitizerService.sanitizeText(currentFormListing.title || '', 100);
     const sanitizedBuildingName = SanitizerService.sanitizeText(currentFormListing.buildingName || '', 100);
     const sanitizedDescription = SanitizerService.sanitizeText(currentFormListing.description || '', 5000);
+
+    const isShortStay = currentFormListing.unitType === UnitType.AIRBNB ||
+                        currentFormListing.unitType === UnitType.BNB ||
+                        currentFormListing.unitType === UnitType.GUEST_ROOM ||
+                        currentFormListing.unitType === UnitType.CAMPSITE;
+    const isSale = currentFormListing.unitType === UnitType.LAND_SALE ||
+                   currentFormListing.unitType === UnitType.FARMLAND_SALE ||
+                   currentFormListing.unitType === UnitType.PROPERTY_SALE;
 
     if (isEditing && currentFormListing.id) {
       setIsSubmitting(true);
@@ -199,7 +213,12 @@ const LandlordDashboard: React.FC<LandlordDashboardProps> = ({
           ...(currentFormListing as Listing),
           title: sanitizedTitle,
           buildingName: sanitizedBuildingName,
-          description: sanitizedDescription
+          description: sanitizedDescription,
+          deposit: (isShortStay || isSale) ? 0 : (currentFormListing.deposit || 0),
+          pricePeriod: (isShortStay ? 'nightly' : (isSale ? 'once' : 'monthly')) as any,
+          landSize: currentFormListing.landSize || undefined,
+          titleDeed: currentFormListing.titleDeed !== undefined ? !!currentFormListing.titleDeed : undefined,
+          amenities: currentFormListing.amenities || {}
         });
         setShowForm(false);
       } catch (err) {
@@ -214,8 +233,8 @@ const LandlordDashboard: React.FC<LandlordDashboardProps> = ({
         description: sanitizedDescription,
         unitType: currentFormListing.unitType || UnitType.BEDSITTER,
         price: currentFormListing.price || 0,
-        deposit: currentFormListing.unitType === UnitType.AIRBNB ? 0 : (currentFormListing.deposit || 0),
-        pricePeriod: (currentFormListing.unitType === UnitType.AIRBNB ? 'nightly' : 'monthly') as any,
+        deposit: (isShortStay || isSale) ? 0 : (currentFormListing.deposit || 0),
+        pricePeriod: (isShortStay ? 'nightly' : (isSale ? 'once' : 'monthly')) as any,
         locationName: currentFormListing.locationName || '',
         coordinates: { lat: -2.71, lng: 37.52 },
         distanceFromTown: 1.2,
@@ -226,7 +245,10 @@ const LandlordDashboard: React.FC<LandlordDashboardProps> = ({
         reviews: [],
         dateListed: new Date().toISOString(),
         hasParking: !!currentFormListing.hasParking,
-        isPetsFriendly: !!currentFormListing.isPetsFriendly
+        isPetsFriendly: !!currentFormListing.isPetsFriendly,
+        landSize: currentFormListing.landSize || undefined,
+        titleDeed: currentFormListing.titleDeed !== undefined ? !!currentFormListing.titleDeed : undefined,
+        amenities: currentFormListing.amenities || {}
       };
 
       setPendingListing(newListingData);
@@ -254,10 +276,13 @@ const LandlordDashboard: React.FC<LandlordDashboardProps> = ({
   };
 
   const getListingFee = () => {
-    if (currentFormListing.unitType === UnitType.AIRBNB ||
-      currentFormListing.unitType === UnitType.GUEST_ROOM ||
-      currentFormListing.unitType === UnitType.CAMPSITE) return LISTING_FEE_SHORT_STAY_PREMIUM;
-    if (currentFormListing.unitType === UnitType.BUSINESS_HOUSE) return LISTING_FEE_BUSINESS;
+    const type = currentFormListing.unitType;
+    if (type === UnitType.PROPERTY_SALE) return LISTING_FEE_PROPERTY_SALE;
+    if (type === UnitType.LAND_SALE || type === UnitType.FARMLAND_SALE) return LISTING_FEE_LAND_SALE;
+    if (type === UnitType.BNB) return LISTING_FEE_BNB_MONTHLY;
+    if (type === UnitType.FARMLAND_RENT) return LISTING_FEE_FARMLAND;
+    if (type === UnitType.AIRBNB || type === UnitType.GUEST_ROOM || type === UnitType.CAMPSITE) return LISTING_FEE_SHORT_STAY_PREMIUM;
+    if (type === UnitType.BUSINESS_HOUSE) return LISTING_FEE_BUSINESS;
     return LISTING_FEE_STANDARD;
   };
 
@@ -297,7 +322,7 @@ const LandlordDashboard: React.FC<LandlordDashboardProps> = ({
   const renderUnitList = () => (
     <div className="space-y-6">
       <div className="flex items-center gap-4 mb-2">
-        <button onClick={() => setActiveBuildingFolder(null)} className="w-10 h-10 rounded-full bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-400 active:scale-90 transition-transform shadow-sm">
+        <button onClick={() => setActiveBuildingFolder(null)} className="w-10 h-10 rounded-full bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 flex items-center justify-center text-slate-605 dark:text-slate-400 active:scale-90 transition-transform shadow-sm">
           <i className="fas fa-arrow-left"></i>
         </button>
         <div>
@@ -385,30 +410,36 @@ const LandlordDashboard: React.FC<LandlordDashboardProps> = ({
               <button onClick={() => setShowForm(false)} className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-400 flex items-center justify-center active:scale-90 transition-transform"><i className="fas fa-times"></i></button>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-5">
+            <form onSubmit={handleSubmit} className="space-y-5 text-left">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 text-black">Listing Title</label>
-                  <input required type="text" placeholder="e.g. Modern 2-Bedroom" className="w-full p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl outline-none border border-slate-100 dark:border-slate-700 focus:border-blue-500 font-bold text-sm shadow-inner text-black" value={currentFormListing.title || ''} onChange={(e) => setCurrentFormListing({ ...currentFormListing, title: e.target.value })} />
+                  <input required type="text" placeholder="e.g. Modern 2-Bedroom" className="w-full p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl outline-none border border-slate-100 dark:border-slate-700 focus:border-blue-500 font-bold text-sm shadow-inner text-black dark:text-white" value={currentFormListing.title || ''} onChange={(e) => setCurrentFormListing({ ...currentFormListing, title: e.target.value })} />
                 </div>
                 <div className="space-y-2">
                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 text-black">Building/Asset Name</label>
-                  <input required type="text" placeholder="e.g. Riverside Apartments" className="w-full p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl outline-none border border-slate-100 dark:border-slate-700 focus:border-blue-500 font-bold text-sm shadow-inner text-black" value={currentFormListing.buildingName || ''} onChange={(e) => setCurrentFormListing({ ...currentFormListing, buildingName: e.target.value })} />
+                  <input type="text" placeholder="e.g. Riverside Apartments" className="w-full p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl outline-none border border-slate-100 dark:border-slate-700 focus:border-blue-500 font-bold text-sm shadow-inner text-black dark:text-white" value={currentFormListing.buildingName || ''} onChange={(e) => setCurrentFormListing({ ...currentFormListing, buildingName: e.target.value })} />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 text-black">Category</label>
-                  <select className="w-full p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl outline-none border border-slate-100 dark:border-slate-700 font-black text-xs uppercase tracking-tight text-black" value={currentFormListing.unitType}
+                  <select className="w-full p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl outline-none border border-slate-100 dark:border-slate-700 font-black text-xs uppercase tracking-tight text-black dark:text-white" value={currentFormListing.unitType}
                     onChange={(e) => {
                       const newType = e.target.value as UnitType;
-                      const isShortStay = newType === UnitType.AIRBNB || newType === UnitType.GUEST_ROOM || newType === UnitType.CAMPSITE;
+                      const isShortStay = newType === UnitType.AIRBNB ||
+                                          newType === UnitType.BNB ||
+                                          newType === UnitType.GUEST_ROOM ||
+                                          newType === UnitType.CAMPSITE;
+                      const isSale = newType === UnitType.LAND_SALE ||
+                                     newType === UnitType.FARMLAND_SALE ||
+                                     newType === UnitType.PROPERTY_SALE;
                       setCurrentFormListing({
                         ...currentFormListing,
                         unitType: newType,
-                        pricePeriod: isShortStay ? 'nightly' : 'monthly',
-                        deposit: isShortStay ? 0 : (currentFormListing.deposit || 0)
+                        pricePeriod: isShortStay ? 'nightly' : (isSale ? 'once' : 'monthly'),
+                        deposit: (isShortStay || isSale) ? 0 : (currentFormListing.deposit || 0)
                       });
                     }}
                   >
@@ -417,7 +448,7 @@ const LandlordDashboard: React.FC<LandlordDashboardProps> = ({
                 </div>
                 <div className="space-y-2">
                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 text-black">Region & Zone</label>
-                  <select required className="w-full p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl outline-none border border-slate-100 dark:border-slate-700 font-black text-xs uppercase tracking-tight text-black" value={currentFormListing.locationName || ''} onChange={(e) => setCurrentFormListing({ ...currentFormListing, locationName: e.target.value })}
+                  <select required className="w-full p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl outline-none border border-slate-100 dark:border-slate-700 font-black text-xs uppercase tracking-tight text-black dark:text-white" value={currentFormListing.locationName || ''} onChange={(e) => setCurrentFormListing({ ...currentFormListing, locationName: e.target.value })}
                   >
                     <option value="" disabled>Select Location</option>
                     <optgroup label="Kimana Zone">
@@ -439,16 +470,91 @@ const LandlordDashboard: React.FC<LandlordDashboardProps> = ({
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 text-black">Pricing (Ksh)</label>
-                  <input required type="number" placeholder="Price" className="w-full p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl outline-none border border-slate-100 dark:border-slate-700 font-black text-sm text-black" value={currentFormListing.price || ''} onChange={(e) => setCurrentFormListing({ ...currentFormListing, price: Number(e.target.value) })} />
+                  <input required type="number" placeholder="Price" className="w-full p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl outline-none border border-slate-100 dark:border-slate-700 font-black text-sm text-black dark:text-white" value={currentFormListing.price || ''} onChange={(e) => setCurrentFormListing({ ...currentFormListing, price: Number(e.target.value) })} />
                 </div>
                 {currentFormListing.unitType !== UnitType.AIRBNB &&
+                  currentFormListing.unitType !== UnitType.BNB &&
                   currentFormListing.unitType !== UnitType.GUEST_ROOM &&
-                  currentFormListing.unitType !== UnitType.CAMPSITE && (
+                  currentFormListing.unitType !== UnitType.CAMPSITE &&
+                  currentFormListing.unitType !== UnitType.PROPERTY_SALE &&
+                  currentFormListing.unitType !== UnitType.LAND_SALE &&
+                  currentFormListing.unitType !== UnitType.FARMLAND_SALE && (
                     <div className="space-y-2">
                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 text-black">Security Deposit</label>
-                      <input required type="number" placeholder="Deposit" className="w-full p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl outline-none border border-slate-100 dark:border-slate-700 font-black text-sm text-black" value={currentFormListing.deposit || ''} onChange={(e) => setCurrentFormListing({ ...currentFormListing, deposit: Number(e.target.value) })} />
+                      <input required type="number" placeholder="Deposit" className="w-full p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl outline-none border border-slate-100 dark:border-slate-700 font-black text-sm text-black dark:text-white" value={currentFormListing.deposit || ''} onChange={(e) => setCurrentFormListing({ ...currentFormListing, deposit: Number(e.target.value) })} />
                     </div>
                   )}
+              </div>
+
+              {/* Land / Farm / Sale Specific Fields */}
+              {(currentFormListing.unitType === UnitType.LAND_SALE ||
+                currentFormListing.unitType === UnitType.FARMLAND_SALE ||
+                currentFormListing.unitType === UnitType.FARMLAND_RENT) && (
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 text-black">Land Size (Area)</label>
+                  <input required type="text" placeholder="e.g. 2.5 Acres, 50x100 ft" className="w-full p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl outline-none border border-slate-100 dark:border-slate-700 focus:border-blue-500 font-bold text-sm text-black dark:text-white" value={currentFormListing.landSize || ''} onChange={(e) => setCurrentFormListing({ ...currentFormListing, landSize: e.target.value })} />
+                </div>
+              )}
+
+              {(currentFormListing.unitType === UnitType.LAND_SALE ||
+                currentFormListing.unitType === UnitType.FARMLAND_SALE ||
+                currentFormListing.unitType === UnitType.PROPERTY_SALE) && (
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 text-black">Title Deed Status</label>
+                  <div className="flex gap-3">
+                    <button type="button" onClick={() => setCurrentFormListing({ ...currentFormListing, titleDeed: true })}
+                      className={`flex-1 py-4 px-4 rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 border-2 transition-all ${currentFormListing.titleDeed === true ? 'bg-emerald-600 border-emerald-600 text-white shadow-lg shadow-emerald-100' : 'bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-800 text-slate-400'}`}
+                    >
+                      <i className="fas fa-check-circle"></i> Ready (Available)
+                    </button>
+                    <button type="button" onClick={() => setCurrentFormListing({ ...currentFormListing, titleDeed: false })}
+                      className={`flex-1 py-4 px-4 rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 border-2 transition-all ${currentFormListing.titleDeed === false ? 'bg-slate-700 border-slate-700 text-white shadow-lg shadow-slate-100' : 'bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-800 text-slate-400'}`}
+                    >
+                      <i className="fas fa-times-circle"></i> Pending
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Amenities Selection Grid */}
+              <div className="space-y-3">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 text-black">Amenities Checklist</label>
+                <div className="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto p-1 border border-slate-100 dark:border-slate-800 rounded-2xl">
+                  {Object.entries({
+                    wifi: 'WiFi Internet',
+                    water: 'Constant Water',
+                    electricity: 'Power Grid',
+                    security: '24/7 Guard',
+                    cctv: 'CCTV Security',
+                    solarPower: 'Solar Backup',
+                    borehole: 'Borehole Water',
+                    generator: 'Power Generator',
+                    swimmingPool: 'Swimming Pool',
+                    gym: 'Fitness Gym'
+                  }).map(([key, label]) => {
+                    const hasAmenity = !!currentFormListing.amenities?.[key as keyof typeof currentFormListing.amenities];
+                    return (
+                      <button
+                        key={key}
+                        type="button"
+                        onClick={() => {
+                          const existing = currentFormListing.amenities || {};
+                          setCurrentFormListing({
+                            ...currentFormListing,
+                            amenities: {
+                              ...existing,
+                              [key]: !existing[key as keyof typeof existing]
+                            }
+                          });
+                        }}
+                        className={`p-3 rounded-xl text-[10px] font-bold text-left flex items-center gap-2 border transition-all ${hasAmenity ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-400 font-extrabold' : 'bg-transparent border-slate-100 dark:border-slate-800 text-slate-400'}`}
+                      >
+                        <i className={`fas ${hasAmenity ? 'fa-check-square' : 'fa-square'}`}></i>
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
 
               <div className="space-y-3">
@@ -475,7 +581,7 @@ const LandlordDashboard: React.FC<LandlordDashboardProps> = ({
                     Refine with AI
                   </button>
                 </div>
-                <textarea required rows={4} placeholder="Security features, water supply details, house finishings..." className="w-full p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl outline-none border border-slate-100 dark:border-slate-700 font-medium text-xs leading-relaxed text-black" value={currentFormListing.description || ''} onChange={(e) => setCurrentFormListing({ ...currentFormListing, description: e.target.value })}></textarea>
+                <textarea required rows={4} placeholder="Security features, water supply details, house finishings..." className="w-full p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl outline-none border border-slate-100 dark:border-slate-700 font-medium text-xs leading-relaxed text-black dark:text-white" value={currentFormListing.description || ''} onChange={(e) => setCurrentFormListing({ ...currentFormListing, description: e.target.value })}></textarea>
                 <p className="text-[9px] text-slate-400 italic px-2">Use the AI Refiner to make your description more professional and appealing to tenants.</p>
               </div>
 

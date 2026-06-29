@@ -16,9 +16,10 @@ import { SanitizerService } from '../services/sanitizer';
 interface AuthFlowProps {
   onAuthenticated: (user: User) => void;
   logoUrl?: string | null;
+  onClose?: () => void;
 }
 
-const AuthFlow: React.FC<AuthFlowProps> = ({ onAuthenticated, logoUrl }) => {
+const AuthFlow: React.FC<AuthFlowProps> = ({ onAuthenticated, logoUrl, onClose }) => {
   const [step, setStep] = useState<AuthStep>('welcome');
   const [role, setRole] = useState<UserRole>(UserRole.TENANT);
   const [showPassword, setShowPassword] = useState(false);
@@ -88,7 +89,6 @@ const AuthFlow: React.FC<AuthFlowProps> = ({ onAuthenticated, logoUrl }) => {
     try {
       const result = await signInWithPopup(auth, googleProvider);
 
-      // Try to get profile using getUserProfile (checks both collections)
       let profile = await FirebaseService.getUserProfile(result.user.email || result.user.uid);
 
       if (profile) {
@@ -98,13 +98,12 @@ const AuthFlow: React.FC<AuthFlowProps> = ({ onAuthenticated, logoUrl }) => {
         const userEmail = result.user.email || "";
         console.log("No existing profile found. Creating new profile for:", userEmail, "as", role);
 
-        // Create basic profile for first-time Google users using the SELECTED role
         const newUser: User = {
           id: result.user.uid,
           name: result.user.displayName || "User",
           email: userEmail,
           phone: result.user.phoneNumber || "",
-          role: role, // Use the role currently selected in the UI
+          role: role,
           unlockedListings: [],
           favorites: [],
           savedSearches: [],
@@ -168,20 +167,17 @@ const AuthFlow: React.FC<AuthFlowProps> = ({ onAuthenticated, logoUrl }) => {
         isEncrypted: true
       };
 
-      // CRITICAL: Ensure database entry is created BEFORE showing user as logged in
       try {
         await FirebaseService.saveUserProfile(newUser);
         console.log("User profile created in Firestore successfully.");
       } catch (dbError: any) {
         console.error("Database profile creation failed during signup:", dbError);
-        // We might want to warn the user but let them in, or block them. 
-        // Given the requirement "always be the protocol", we should probably make sure it's known.
         alert("Account created, but there was an issue setting up your profile. Please try logging in again.");
       }
 
       setIsLoading(false);
       await LoggerService.logAuthAttempt(cleanEmail, true);
-      onAuthenticated(newUser); // Log in directly after signup
+      onAuthenticated(newUser);
     } catch (error: any) {
       setIsLoading(false);
       console.error("Signup failed:", error);
@@ -212,7 +208,6 @@ const AuthFlow: React.FC<AuthFlowProps> = ({ onAuthenticated, logoUrl }) => {
       if (profile) {
         onAuthenticated(profile);
       } else {
-        // Fallback for missing profile
         const newUser: User = {
           id: userCredential.user.uid,
           name: userCredential.user.displayName || "User",
@@ -256,166 +251,239 @@ const AuthFlow: React.FC<AuthFlowProps> = ({ onAuthenticated, logoUrl }) => {
   };
 
   const renderRoleToggle = () => (
-    <div className="flex bg-slate-100 dark:bg-slate-900 p-1 rounded-2xl mb-6 w-full max-w-xs mx-auto">
+    <div className="flex bg-slate-100 dark:bg-slate-900 p-1.5 rounded-2xl mb-6 w-full max-w-xs mx-auto border border-slate-200/50 dark:border-slate-800/80">
       <button
         type="button"
         onClick={() => setRole(UserRole.TENANT)}
-        className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${role === UserRole.TENANT ? 'bg-white dark:bg-slate-800 text-blue-600 shadow-sm' : 'text-slate-400'}`}
+        className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${role === UserRole.TENANT ? 'bg-white dark:bg-slate-800 text-blue-650 dark:text-blue-400 shadow-md shadow-slate-200/50 dark:shadow-none' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-350'}`}
       >
         <i className="fas fa-user mr-2"></i> Tenant
       </button>
       <button
         type="button"
         onClick={() => setRole(UserRole.LANDLORD)}
-        className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${role === UserRole.LANDLORD ? 'bg-white dark:bg-slate-800 text-blue-600 shadow-sm' : 'text-slate-400'}`}
+        className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${role === UserRole.LANDLORD ? 'bg-white dark:bg-slate-800 text-blue-650 dark:text-blue-400 shadow-md shadow-slate-200/50 dark:shadow-none' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-350'}`}
       >
         <i className="fas fa-user-tie mr-2"></i> Landlord
       </button>
     </div>
   );
 
-  if (step === 'welcome') {
-    return (
-      <div className="min-h-screen bg-white flex flex-col items-center justify-center p-6 text-center animate-in fade-in duration-500">
-        <div className="w-32 h-32 flex items-center justify-center relative overflow-hidden mb-6">
-          <img src={logoUrl || "/logo.png"} alt="Logo" className="w-full h-full object-contain" />
-        </div>
-        <h1 className="text-3xl font-black text-slate-900 mb-2 tracking-tight">Masqani Poa</h1>
-        <p className="text-slate-500 mb-8 max-w-xs text-sm font-medium">Connecting landlords and tenants with <span className="text-blue-600 font-bold">Secure Marketplace</span> technology.</p>
+  const renderWelcome = () => (
+    <div className="space-y-6">
+      <div className="text-center md:text-left space-y-2">
+        <h2 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">Get Started</h2>
+        <p className="text-slate-500 dark:text-slate-400 text-sm font-medium">Join the secure real estate network today.</p>
+      </div>
 
-        {renderRoleToggle()}
+      {renderRoleToggle()}
 
-        <div className="space-y-4 w-full max-w-xs">
-          <button onClick={() => setStep('signup')}
-            className="w-full py-4 bg-blue-600 text-white font-bold rounded-2xl shadow-lg active:scale-95 transition-transform flex items-center justify-center gap-3 text-sm uppercase tracking-widest"
+      <div className="space-y-4">
+        <button onClick={() => setStep('signup')}
+          className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white font-black rounded-2xl shadow-lg shadow-blue-500/10 active:scale-[0.98] transition-all flex items-center justify-center gap-3 text-xs uppercase tracking-widest"
+        >
+          Create Account
+        </button>
+
+        <button onClick={handleGoogleLogin} disabled={isLoading}
+          className="w-full py-4 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 font-black rounded-2xl hover:bg-slate-55 dark:hover:bg-slate-900 active:scale-[0.98] transition-all flex items-center justify-center gap-3 text-xs uppercase tracking-widest bg-transparent"
+        >
+          {isLoading ? <i className="fas fa-circle-notch animate-spin"></i> : <><i className="fab fa-google text-red-500"></i> Google Login</>}
+        </button>
+
+        <div className="pt-4 text-center">
+          <button onClick={() => setStep('login')}
+            className="text-blue-600 dark:text-blue-400 font-black text-[10px] uppercase tracking-widest hover:underline"
           >
-            Create Account
+            Already have an account? Log In
           </button>
-
-          <button onClick={handleGoogleLogin} disabled={isLoading}
-            className="w-full py-4 border-2 border-slate-100 text-slate-700 font-bold rounded-2xl active:scale-95 transition-transform flex items-center justify-center gap-3 text-sm uppercase tracking-widest"
-          >
-            {isLoading ? <i className="fas fa-circle-notch animate-spin"></i> : <><i className="fab fa-google text-red-500"></i> Google Login</>}
-          </button>
-
-          <div className="pt-4">
-            <button onClick={() => setStep('login')}
-              className="text-blue-600 font-black text-[10px] uppercase tracking-widest"
-            >
-              Already have an account? Log In
-            </button>
-          </div>
-          <p className="text-[8px] text-center text-slate-400 font-bold uppercase tracking-[0.2em] mt-8">Build v3.1 - 2026.03.11 Public Market</p>
         </div>
       </div>
-    );
-  }
+    </div>
+  );
 
-  if (step === 'signup') {
-    return (
-      <div className="min-h-screen bg-white p-6 animate-in slide-in-from-right duration-500 overflow-y-auto">
-        <button onClick={() => setStep('welcome')} className="mb-6 text-slate-400 p-2 active:scale-90 transition-transform"><i className="fas fa-arrow-left text-xl"></i></button>
-        <div className="space-y-1 mb-8">
-          <h2 className="text-3xl font-black text-slate-900 tracking-tight">{role === UserRole.TENANT ? 'Tenant' : 'Landlord'} Sign Up</h2>
-          <p className="text-xs text-slate-400 font-bold uppercase tracking-widest">Create a secure housing account</p>
+  const renderSignup = () => (
+    <div className="space-y-6">
+      <div className="flex items-center gap-3">
+        <button onClick={() => setStep('welcome')} className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-900 text-slate-600 dark:text-slate-400 flex items-center justify-center active:scale-90 transition-all border border-slate-200/50 dark:border-slate-800">
+          <i className="fas fa-arrow-left text-sm"></i>
+        </button>
+        <div>
+          <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">{role === UserRole.TENANT ? 'Tenant' : 'Landlord'} Sign Up</h2>
+          <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">Register a secure account</p>
+        </div>
+      </div>
+
+      {renderRoleToggle()}
+
+      <form onSubmit={handleSignup} className="space-y-4">
+        <div className="space-y-1">
+          <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Full Name</label>
+          <input required type="text" placeholder="e.g. John Mweru" className="w-full p-4 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl outline-none font-bold text-sm text-black dark:text-white focus:border-blue-500 transition-colors" value={signupData.fullName} onChange={e => setSignupData({ ...signupData, fullName: e.target.value })} />
         </div>
 
-        {renderRoleToggle()}
+        <div className="space-y-1">
+          <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Phone Number</label>
+          <input required type="tel" placeholder="07xxxxxxxx" className="w-full p-4 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl outline-none font-bold text-sm text-black dark:text-white focus:border-blue-500 transition-colors" value={signupData.phone} onChange={e => setSignupData({ ...signupData, phone: e.target.value })} />
+        </div>
 
-        <form onSubmit={handleSignup} className="space-y-4">
-          <div className="space-y-1">
-            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Full Name</label>
-            <input required type="text" placeholder="e.g. John Mweru" className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none font-bold text-sm text-black" value={signupData.fullName} onChange={e => setSignupData({ ...signupData, fullName: e.target.value })} />
+        <div className="space-y-1">
+          <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Email Address</label>
+          <input required type="email" placeholder="name@example.com" className="w-full p-4 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl outline-none font-bold text-sm text-black dark:text-white focus:border-blue-500 transition-colors" value={signupData.email} onChange={e => setSignupData({ ...signupData, email: e.target.value })} />
+        </div>
+
+        <div className="space-y-1 relative text-slate-900 dark:text-white">
+          <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Secure Password</label>
+          <div className="relative">
+            <input required type={showPassword ? "text" : "password"} placeholder="••••••••" className="w-full p-4 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl outline-none font-bold text-sm text-black dark:text-white focus:border-blue-500 transition-colors" value={signupData.password} onChange={e => setSignupData({ ...signupData, password: e.target.value })} />
+            <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-450 hover:text-slate-650 dark:hover:text-white transition-colors">
+              <i className={`fas ${showPassword ? 'fa-eye-slash' : 'fa-eye'}`}></i>
+            </button>
           </div>
+        </div>
 
-          <div className="space-y-1">
-            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Phone Number</label>
-            <input required type="tel" placeholder="07xxxxxxxx" className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none font-bold text-sm text-black" value={signupData.phone} onChange={e => setSignupData({ ...signupData, phone: e.target.value })} />
+        <div className="space-y-1 relative text-slate-900 dark:text-white">
+          <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Confirm Password</label>
+          <div className="relative">
+            <input required type={showConfirmPassword ? "text" : "password"} placeholder="••••••••" className="w-full p-4 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl outline-none font-bold text-sm text-black dark:text-white focus:border-blue-500 transition-colors" value={signupData.confirmPassword} onChange={e => setSignupData({ ...signupData, confirmPassword: e.target.value })} />
+            <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-455 hover:text-slate-655 dark:hover:text-white transition-colors">
+              <i className={`fas ${showConfirmPassword ? 'fa-eye-slash' : 'fa-eye'}`}></i>
+            </button>
           </div>
+        </div>
 
-          <div className="space-y-1">
-            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Email Address</label>
-            <input required type="email" placeholder="name@example.com" className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none font-bold text-sm text-black" value={signupData.email} onChange={e => setSignupData({ ...signupData, email: e.target.value })} />
-          </div>
+        <div id="recaptcha-container" className="my-2 flex justify-center scale-90 sm:scale-100"></div>
 
-          <div className="space-y-1 text-slate-900">
-            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Secure Password</label>
-            <input required type="password" placeholder="••••••••" className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none font-bold text-sm text-black" value={signupData.password} onChange={e => setSignupData({ ...signupData, password: e.target.value })} />
-          </div>
-
-          <div className="space-y-1 text-slate-900">
-            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Confirm Password</label>
-            <input required type="password" placeholder="••••••••" className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none font-bold text-sm text-black" value={signupData.confirmPassword} onChange={e => setSignupData({ ...signupData, confirmPassword: e.target.value })} />
-          </div>
-
-          <div id="recaptcha-container" className="my-2 flex justify-center scale-90 sm:scale-100"></div>
-          <p className="text-[8px] text-center text-slate-400 font-bold uppercase tracking-[0.2em] mt-2 mb-4">Build v3.1 - 2026.03.11 Public Market</p>
-          <button type="submit" disabled={isLoading} className="w-full py-5 bg-blue-600 text-white font-black rounded-2xl shadow-xl active:scale-95 transition-all flex items-center justify-center gap-2 uppercase text-xs tracking-widest mt-4">
-            {isLoading ? <i className="fas fa-circle-notch animate-spin"></i> : `Join as ${role}`}
+        <button type="submit" disabled={isLoading} className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white font-black rounded-2xl shadow-lg active:scale-[0.98] transition-all flex items-center justify-center gap-2 uppercase text-xs tracking-widest mt-4">
+          {isLoading ? <i className="fas fa-circle-notch animate-spin"></i> : `Join as ${role}`}
+        </button>
+        
+        <div className="pt-4 text-center">
+          <button type="button" onClick={() => setStep('login')}
+            className="text-blue-600 dark:text-blue-400 font-black text-[10px] uppercase tracking-widest hover:underline"
+          >
+            Already have an account? Log In
           </button>
+        </div>
+      </form>
+    </div>
+  );
+
+  const renderLogin = () => (
+    <div className="space-y-6">
+      <div className="flex items-center gap-3">
+        <button onClick={() => setStep('welcome')} className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-900 text-slate-600 dark:text-slate-400 flex items-center justify-center active:scale-90 transition-all border border-slate-200/50 dark:border-slate-800">
+          <i className="fas fa-arrow-left text-sm"></i>
+        </button>
+        <div>
+          <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">Welcome Back</h2>
+          <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">Secure gateway access</p>
+        </div>
+      </div>
+
+      {renderRoleToggle()}
+
+      <form onSubmit={handleLogin} className="space-y-5">
+        <div className="space-y-1">
+          <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Email Address</label>
+          <input required type="email" placeholder="name@email.com" className="w-full p-4 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl outline-none font-bold text-sm text-black dark:text-white focus:border-blue-500 transition-colors" value={loginData.identifier} onChange={e => setLoginData({ ...loginData, identifier: e.target.value })} />
+        </div>
+
+        <div className="space-y-1 text-slate-900 dark:text-white">
+          <div className="flex justify-between items-center px-1">
+            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Password</label>
+            <button type="button" onClick={handleForgotPassword} className="text-[9px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-widest hover:underline">
+              Forgot?
+            </button>
+          </div>
+          <div className="relative">
+            <input required type={showPassword ? "text" : "password"} placeholder="••••••••" className="w-full p-4 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl outline-none font-bold text-sm text-black dark:text-white focus:border-blue-500 transition-colors" value={loginData.password} onChange={e => setLoginData({ ...loginData, password: e.target.value })} />
+            <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-650 dark:hover:text-white transition-colors">
+              <i className={`fas ${showPassword ? 'fa-eye-slash' : 'fa-eye'}`}></i>
+            </button>
+          </div>
+        </div>
+
+        <div id="recaptcha-container" className="my-2 flex justify-center scale-90 sm:scale-100"></div>
+
+        <button type="submit" disabled={isLoading} className="w-full py-4.5 bg-blue-600 hover:bg-blue-700 text-white font-black rounded-2xl shadow-lg active:scale-[0.98] transition-all flex items-center justify-center gap-2 uppercase text-xs tracking-widest mt-4">
+          {isLoading ? <i className="fas fa-circle-notch animate-spin"></i> : 'Secure Login'}
+        </button>
+        <button type="button" onClick={handleGoogleLogin} disabled={isLoading}
+          className="w-full py-4 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-350 font-black rounded-2xl hover:bg-slate-55 dark:hover:bg-slate-900 active:scale-[0.98] transition-all flex items-center justify-center gap-3 text-xs uppercase tracking-widest bg-transparent mt-2"
+        >
+          {isLoading ? <i className="fas fa-circle-notch animate-spin"></i> : <><i className="fab fa-google text-red-500"></i> Google Login</>}
+        </button>
+      </form>
+    </div>
+  );
+
+  return (
+    <div className="fixed inset-0 z-50 overflow-y-auto flex bg-slate-50 dark:bg-slate-950 transition-colors">
+      {/* Close button for entire flow */}
+      {onClose && (
+        <button
+          onClick={onClose}
+          className="absolute top-6 right-6 z-50 w-10 h-10 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-900 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center active:scale-90 transition-all border border-slate-200/50 dark:border-slate-800 shadow-sm"
+        >
+          <i className="fas fa-times"></i>
+        </button>
+      )}
+
+      {/* Left Column: Visual Hero (Desktop Only) */}
+      <div className="hidden md:flex md:w-1/2 lg:w-3/5 bg-slate-900 relative overflow-hidden flex-col justify-between p-12 text-white">
+        {/* Background Image with Gradient Overlay */}
+        <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1600585154340-be6161a56a0c?q=80&w=2070&auto=format&fit=crop')] bg-cover bg-center opacity-40 mix-blend-overlay"></div>
+        <div className="absolute inset-0 bg-gradient-to-tr from-slate-950 via-slate-900/90 to-blue-900/60 z-10"></div>
+        
+        {/* Brand & Slogan */}
+        <div className="relative z-20 flex items-center gap-3">
+          <div className="w-10 h-10 bg-white/10 backdrop-blur rounded-2xl flex items-center justify-center border border-white/20">
+            <img src={logoUrl || "/logo.png"} alt="Logo" className="w-6 h-6 object-contain" />
+          </div>
+          <span className="font-black text-lg uppercase tracking-widest text-white">Masqani Poa</span>
+        </div>
+
+        <div className="relative z-20 space-y-6 max-w-lg my-auto">
+          <span className="bg-blue-600/30 border border-blue-500/30 text-blue-400 text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full">
+            Secure Real Estate Marketplace
+          </span>
+          <h2 className="text-4xl lg:text-5xl font-black leading-tight tracking-tight text-slate-100">
+            Find your perfect place, wherever you are.
+          </h2>
+          <p className="text-slate-350 text-sm leading-relaxed font-medium">
+            We connect verified landlords and prospective tenants through secure marketplace technology. Explore premium residential units, commercial spaces, farmlands, and short-stay apartments.
+          </p>
+        </div>
+
+        <div className="relative z-20 border-t border-white/10 pt-6 flex items-center justify-between text-[9px] font-black text-slate-400 uppercase tracking-widest">
+          <span>Build v3.1 Public Market</span>
+          <span>© 2026 Masqani Poa</span>
+        </div>
+      </div>
+
+      {/* Right Column: Interactive Form Panel */}
+      <div className="w-full md:w-1/2 lg:w-2/5 flex flex-col justify-center p-8 sm:p-12 relative bg-white dark:bg-slate-950 transition-colors shadow-2xl min-h-screen">
+        <div className="max-w-md w-full mx-auto space-y-8">
           
-          <div className="pt-4 text-center">
-            <button type="button" onClick={() => setStep('login')}
-              className="text-blue-600 font-black text-[10px] uppercase tracking-widest"
-            >
-              Already have an account? Log In
-            </button>
-          </div>
-        </form>
-      </div>
-    );
-  }
-
-  if (step === 'login') {
-    return (
-      <div className="min-h-screen bg-white p-6 animate-in slide-in-from-left duration-500 flex flex-col justify-center">
-        <button onClick={() => setStep('welcome')} className="absolute top-6 left-6 text-slate-400 p-2 active:scale-90 transition-transform"><i className="fas fa-arrow-left text-xl"></i></button>
-
-        <div className="max-w-sm w-full mx-auto space-y-8">
-          <div className="space-y-1">
-            <h2 className="text-3xl font-black text-slate-900 tracking-tight">Welcome Back</h2>
-            <p className="text-xs text-slate-400 font-bold uppercase tracking-widest">Secure access to Masqani Poa</p>
+          {/* Top Logo / Mobile Brand Header */}
+          <div className="md:hidden flex flex-col items-center mb-4">
+            <div className="w-16 h-16 flex items-center justify-center relative overflow-hidden mb-3">
+              <img src={logoUrl || "/logo.png"} alt="Logo" className="w-full h-full object-contain" />
+            </div>
+            <h1 className="text-xl font-black text-slate-900 dark:text-white tracking-tight">Masqani Poa</h1>
+            <p className="text-slate-400 text-[8px] font-black uppercase tracking-widest mt-0.5">Secure Housing Portal</p>
           </div>
 
-          {renderRoleToggle()}
+          {/* Form Step Rendering */}
+          {step === 'welcome' && renderWelcome()}
+          {step === 'signup' && renderSignup()}
+          {step === 'login' && renderLogin()}
 
-          <form onSubmit={handleLogin} className="space-y-5">
-            <div className="space-y-1">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Email Address</label>
-              <input required type="email" placeholder="name@email.com" className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none font-bold text-sm text-black" value={loginData.identifier} onChange={e => setLoginData({ ...loginData, identifier: e.target.value })} />
-            </div>
-
-            <div className="space-y-1">
-              <div className="flex justify-between items-center px-1">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Password</label>
-                <button type="button" onClick={handleForgotPassword} className="text-[10px] font-black text-blue-600 uppercase tracking-widest">
-                  Forgot?
-                </button>
-              </div>
-              <input required type="password" placeholder="••••••••" className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none font-bold text-sm text-black" value={loginData.password} onChange={e => setLoginData({ ...loginData, password: e.target.value })} />
-            </div>
-
-            <div id="recaptcha-container" className="my-2 flex justify-center scale-90 sm:scale-100"></div>
-
-            <button type="submit" disabled={isLoading} className="w-full py-5 bg-blue-600 text-white font-black rounded-2xl shadow-xl active:scale-95 transition-all flex items-center justify-center gap-2 uppercase text-xs tracking-widest mt-4">
-              {isLoading ? <i className="fas fa-circle-notch animate-spin"></i> : 'Secure Login'}
-            </button>
-            <button type="button" onClick={handleGoogleLogin} disabled={isLoading}
-              className="w-full py-4 border-2 border-slate-100 text-slate-700 font-bold rounded-2xl active:scale-95 transition-transform flex items-center justify-center gap-3 text-sm uppercase tracking-widest mt-2"
-            >
-              {isLoading ? <i className="fas fa-circle-notch animate-spin"></i> : <><i className="fab fa-google text-red-500"></i> Google Login</>}
-            </button>
-          </form>
-          <p className="text-[8px] text-center text-slate-400 font-bold uppercase tracking-[0.2em] mt-8">Build v3.1 - 2026.03.11 Public Market</p>
         </div>
       </div>
-    );
-  }
-
-  return null;
+    </div>
+  );
 };
-
-// Helper for translation (t is passed from props usually, but here we can define a fallback or use key)
-const t = (key: string) => key;
 
 export default AuthFlow;
